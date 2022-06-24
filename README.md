@@ -37,11 +37,11 @@ $ time gawk -f balance.awk -v account="Ex|In" main.ledger
 
 ```
 $ time gawk -f groupby.awk -v account=^Ex -v group=month main.ledger
-2010-12                               Expenses:Escrow                       3.3531e+06        3.3531e+06
-                                      Expenses:Food:Groceries               2.50924e+06       5.86234e+06
-                                      Expenses:Interest:Mortgage            5.5885e+06       1.14508e+07
-2011-01                               Expenses:Auto                         6.14735e+07       7.29243e+07
-                                      Expenses:Books                            223540       7.31479e+07
-                                      Expenses:Food:Groceries               1.21829e+06       7.43662e+07
-gawk -f groupby.awk -v account=^Ex -v group=month main.ledger  0.33s user 0.01s system 96% cpu 0.351 total
+2010-12                               Expenses:Escrow                       3353100.00  3353100.000000
+                                      Expenses:Food:Groceries               2509236.51  5862336.510000
+                                      Expenses:Interest:Mortgage            5588500.00  11450836.510000
+2011-01                               Expenses:Auto                         61473500.00  72924336.510000
+                                      Expenses:Books                         223540.02  73147876.530000
+                                      Expenses:Food:Groceries               1218293.07  74366169.600000
+0.33s user 0.01s system 98% cpu 0.344 total
 ```

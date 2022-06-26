@@ -1,13 +1,15 @@
 # Plain text accounting in AWK
 Plaintext accounting with plaintext scripts without installing additional software.
 
+
 ## Features
 
 - Balance report
 - Register report
+- Print report (filtering transactions)
 - Group by year/month/day report
 - Filtering accounts
-- Checking balance for each transaction
+- Script for validating input file
 - awk's `-M` option calculates with arbitrary precision arithmetic 
 
 ## Advantages
@@ -16,8 +18,15 @@ Plaintext accounting with plaintext scripts without installing additional softwa
 - simple development or customization: no compilation
 - small readable scripts
 - can be kept and customized directly in your accounting repo
-- 2x faster that ledger with single default currency
+- 3x faster that ledger with single currency
 - awk knowledge is reusable in other tasks, unlike ledger specific syntax
+
+## Ledger file syntax
+- very similar to original ledger
+- account names without space
+- account line without value must be last
+- single currency scripts ignore currencies
+- ISO date format (2022-06-01) but easy to customize regex
 
 ## TODO
 

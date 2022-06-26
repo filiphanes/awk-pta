@@ -1,38 +1,28 @@
 BEGIN {
     FS="[ \t]+"
-    OFMT = "%.2f"
     accountPattern = account "";
 }
 
-function end_transaction() {
-    if (accountNoValue) {
-        accounts[accountNoValue] -= balance;
-    }
-    balance = 0;
-    accountNoValue = "";
-}
-
-# trasaction header: Date Description
-/^[0-9]{4}-[0-9]{2}-[0-9]{2} / {
-    end_transaction();
-    t_count++;
-    next;
-}
-
 # transaction lines: Account Value
-/^ +[A-Za-z]/ {
-    if (+$3) {
-        accounts[$2] += $3;
-        balance += $3;
+/^[ \t]+[A-Za-z]/ {
+    val = +$3;
+    if (val) {
+        accounts[$2] += val;
+        balance += val;
     } else {
-        accountNoValue = $2;
+        accounts[$2] -= balance;
+        balance -= balance;
     }
 	next;
 }
 
-END {
-    end_transaction()
+# trasaction header: Date Description
+/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
+    balance = 0;
+    next;
+}
 
+END {
     PROCINFO["sorted_in"] = "@ind_str_asc";
     for (account in accounts) {
         if (account ~ accountPattern) {
@@ -40,7 +30,5 @@ END {
             total += accounts[account];
         }
     }
-    print "------------"
-    printf "%12.2f  Total\n", total
-    print t_count, "transactions"
+    printf "\n%12.2f  Total\n", total
 }

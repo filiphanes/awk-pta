@@ -1,18 +1,18 @@
 BEGIN {
     FS="[ \t]{2,}"
     OFMT = "%.2f"
-	accountPattern = account "";
+    accountPattern = account "";
 }
 
 function end_transaction() {
     if (accountNoValue) {
-		accounts[accountNoValue] -= t_balance;
+        accounts[accountNoValue] -= t_balance;
     }
-	else if (t_balance > 0) {
+    else if (t_balance > 0) {
         print "Transaction at line", line, "does't balance" > "/dev/stderr"
-	}
+    }
     t_balance = 0;
-	accountNoValue = "";
+    accountNoValue = "";
 }
 
 # trasaction header: Date Description
@@ -20,14 +20,14 @@ function end_transaction() {
     end_transaction();
     line = NR;
     header = $1 $2 $3 $4;
-	next;
+    next;
 }
 
 # transaction lines: Account Value
 /^[ \t]+[A-Za-z]/ {
     if ($3) {  # if value
         t_balance += $3;
-		if ($2 ~ accountPattern) {
+        if ($2 ~ accountPattern) {
             balance += $3;
             printf "%-36.36s  %-36.36s  %10g  %16g\n", header, $2, $3, balance;
             header = "";

@@ -1,6 +1,6 @@
 BEGIN {
     FS="[ \t]"
-	accountPattern = account "";
+    accountPattern = account "";
     b_len = length(b);
     e_len = length(e);
     b = b ""
@@ -13,7 +13,7 @@ BEGIN {
         print;
         want = 1;
     }
-	next;
+    next;
 }
 
 # transaction lines: Account Value

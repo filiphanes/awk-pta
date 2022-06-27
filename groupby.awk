@@ -7,7 +7,7 @@ BEGIN {
 }
 
 # Account lines
-/^[ \t]+[A-Za-z0-9:]/ {
+/^[ \t]+[A-Za-z\(]/ {
     val = +$3;
 	if (val) {
 		balance += val;
@@ -22,10 +22,15 @@ BEGIN {
 }
 
 # Transaction header
-/^[0-9]{4}-[0-9]{2}-[0-9]{2} / {
+/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
     balance = 0;
 	group = substr($1, 0, groupByDate);
+    autoTrans = 0;
 	next;
+}
+
+match($0, /^= *\/([^\/]+)\//, m) {
+    autoTrans = 1;
 }
 
 END {

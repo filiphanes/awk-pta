@@ -1,6 +1,5 @@
 BEGIN {
     FS="[ \t]+"
-    accountPattern = account "";
 }
 
 # transaction lines: Account Value
@@ -18,17 +17,24 @@ BEGIN {
 # trasaction header: Date Description
 /^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
     balance = 0;
+    date = substr($0, 0, 10);
+    if (last_date < date)
+        last_date = date;
     next;
 }
 
 END {
     # Enable sorted for in array
     PROCINFO["sorted_in"] = "@ind_str_asc";
+
+    # Find longest account name length
     for (account in accounts) {
-        if (account ~ accountPattern) {
-            printf "%12.2f  %s\n", accounts[account], account;
-            total += accounts[account];
-        }
+        len = length(account);
+        if (max_len < len) max_len = len;
     }
-    printf "\n%12.2f  Total\n", total
+
+    print last_date, "Opening Balances"
+    for (account in accounts) {
+        printf "    %-*s  %16.2f\n", max_len, account, accounts[account];
+    }
 }

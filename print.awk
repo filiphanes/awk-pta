@@ -1,28 +1,29 @@
 BEGIN {
     FS="[ \t]"
     accountPattern = account "";
-    b_len = length(b);
-    e_len = length(e);
-    b = b ""
-    e = e "Z"
+    begin = begin "";
+    end = end "Z";
+}
+
+# Account lines
+/^[ \t]+[A-Za-z\(]/ && want {
+    print;
+    next;
 }
 
 # trasaction header: Date Description
-/^[0-9]{4}-[0-9]{2}-[0-9]{2}[ \t]/ {
-    if (b < $1 && $1 < e) {
+/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
+    date = substr($0, 0, 10);
+    want = begin < date && date < end;
+    if (want) {
+        print "";
         print;
-        want = 1;
     }
     next;
 }
 
-# transaction lines: Account Value
-/^[ \t]+[A-Za-z]/ && want {
+# Comments in transaction
+/^[ \t]+;/ && want {
     print;
-}
-
-# Empty line
-/^[ \t]*$/ && want {
-    print;
-    want = 0;
+    next;
 }

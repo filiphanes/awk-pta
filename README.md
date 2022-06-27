@@ -6,6 +6,7 @@ Plaintext accounting with plaintext scripts without installing additional softwa
 
 - Balance report
 - Register report
+- Equity report
 - Print report (filtering transactions)
 - Group by year/month/day report
 - Filtering accounts
@@ -18,7 +19,7 @@ Plaintext accounting with plaintext scripts without installing additional softwa
 - simple development or customization: no compilation
 - small readable scripts
 - can be kept and customized directly in your accounting repo
-- 3x faster that ledger with single currency
+- 2-3x faster that ledger with single currency
 - awk knowledge is reusable in other tasks, unlike ledger specific syntax
 
 ## Ledger file syntax
@@ -55,12 +56,42 @@ $ time gawk -f balance.awk -v account="Ex|In" ledger.txt
 ```
 
 ```
-$ time gawk -f groupby.awk -v account=^Ex -v group=month ledger.txt
-2010-12         Expenses:Escrow                   3353100.00  3353100.000000
-                Expenses:Food:Groceries           2509236.51  5862336.510000
-                Expenses:Interest:Mortgage        5588500.00  11450836.510000
-2011-01         Expenses:Auto                     61473500.00  72924336.510000
-                Expenses:Books                     223540.02  73147876.530000
-                Expenses:Food:Groceries           1218293.07  74366169.600000
-0.33s user 0.01s system 98% cpu 0.344 total
+$ gtime gawk -f groupby.awk -v group=month ledger.txt
+2010-12       Assets:Checking                        -2508236.51      -2508236.51
+              Equity:OpeningBalances                -11178000.00     -13686236.51
+              Expenses:Escrow                         3353100.00     -10333136.51
+              Expenses:Food:Groceries                 2509236.51      -7823900.00
+              Expenses:Interest:Mortgage              5588500.00      -2235400.00
+              Liabilities:Mortgage:Principal          2235400.00             0.00
+2011-01       Assets:Checking                        17782607.02      17782607.02
+              Assets:Savings                        -58120400.00     -40337792.98
+              Expenses:Auto                          61473500.00      21135707.02
+              Expenses:Books                           223540.02      21359247.04
+              Expenses:Food:Groceries                 1218293.07      22577540.11
+              Income:Salary                         -22354000.09        223540.02
+              Liabilities:MasterCard                  -223540.02            -0.00
+2011-12       Assets:Checking:Business                 335310.00        335310.00
+              Income:Sales                            -335310.00            -0.00
+0.56user 0.01system 0:00.58elapsed 98%CPU (0avgtext+0avgdata 4848maxresident)k
+0inputs+0outputs (0major+409minor)pagefaults 0swaps
+```
+
+```
+$ gtime gawk -f equity.awk ledger.txt
+2011-12-01 Opening Balances
+    Assets:Checking                      15274370.51
+    Assets:Checking:Business               335310.00
+    Assets:Savings                      -58120400.00
+    Equity:OpeningBalances              -11178000.00
+    Expenses:Auto                        61473500.00
+    Expenses:Books                         223540.02
+    Expenses:Escrow                       3353100.00
+    Expenses:Food:Groceries               3727529.58
+    Expenses:Interest:Mortgage            5588500.00
+    Income:Salary                       -22354000.09
+    Income:Sales                          -335310.00
+    Liabilities:MasterCard                -223540.02
+    Liabilities:Mortgage:Principal        2235400.00
+0.35user 0.01system 0:00.37elapsed 97%CPU (0avgtext+0avgdata 4832maxresident)k
+0inputs+0outputs (0major+408minor)pagefaults 0swaps
 ```

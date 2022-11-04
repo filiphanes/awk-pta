@@ -1,3 +1,8 @@
+#!/usr/bin/env awk -f
+# Prints some stats about ledger like 
+# - number of transactions
+# - date of first, last transaction
+# - number of accounts
 BEGIN {
     FS="[ \t]+"
     first_date = "9999";

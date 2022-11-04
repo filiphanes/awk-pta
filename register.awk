@@ -1,3 +1,4 @@
+#!/usr/bin/env awk -f
 BEGIN {
     FS="[ \t]{2,}"
     OFMT = "%.2f"

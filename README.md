@@ -1,5 +1,5 @@
 # Plain text accounting in AWK
-Plaintext accounting with plaintext scripts without installing additional software.
+Plain text accounting with plain text scripts without installing additional software.
 
 
 ## Features

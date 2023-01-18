@@ -10,7 +10,7 @@ function end_transaction() {
         accounts[accountNoValue] -= t_balance;
     }
     else if (t_balance > 0) {
-        print "Transaction at line", line, "does't balance" > "/dev/stderr"
+        print "Transaction at line", line, "doesn't balance" > "/dev/stderr"
     }
     t_balance = 0;
     accountNoValue = "";

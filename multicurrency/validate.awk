@@ -12,7 +12,7 @@ function end_transaction() {
     }
     else for (com in t_balance)
         if (t_balance[com]) {
-            print "Transaction at line", line, "does't balance" > "/dev/stderr";
+            print "Transaction at line", line, "doesn't balance" > "/dev/stderr";
             exit 1;
         }
     delete t_balance;

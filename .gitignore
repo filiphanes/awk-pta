@@ -1,3 +1,5 @@
+.env
+.DS_Store
 main.ledger
-ledger.txt
-
+*.txt
+scripts/

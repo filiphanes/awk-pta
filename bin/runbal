@@ -1,0 +1,7 @@
+#!/usr/bin/env awk -f
+# Calculates running balance for postings from stdin 
+{
+    balance += +$2
+    printf "%7.2f %s\n", balance, $0
+    if (-0.0001 < balance && balance < 0.0001) printf "\n"
+}

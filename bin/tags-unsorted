@@ -1,0 +1,31 @@
+#!/usr/bin/awk -f
+# Prints tags file tag<tab>filename<tab>linenumber
+# needs to be sorted before using in im tags
+
+BEGIN {
+    OFS = "\t"
+    print "!_TAG_FILE_SORTED", 1, ""
+}
+
+BEGINFILE {
+    commontags = ""
+}
+
+/^[0-9][0-9]/ {
+    id = FILENAME, FNR
+    date = $1
+    print date, id     # year-month-day full date
+    #sub("-[0-9]+$", "", date)
+    #print $1, id       # year-month
+    #sub("-[0-9]+$", "", date)
+    #if (date) print date, id # year
+    print abs(+$2), id
+    for (i=3; i<=NF; i++) print $(i), id
+    for (tag in commontags) print tag, id
+    next
+}
+
+/^=/ {
+    sub("^= *", "", $0)
+    split($0, commontags)
+}

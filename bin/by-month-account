@@ -1,0 +1,13 @@
+#!/usr/bin/awk -f
+# Calculates balances for months and accounts
+# from preprocessed postings
+
+{
+    groups[substr($1, 1, 7)][$3] += +$2;
+}
+
+END {
+    for (group in groups)
+        for (account in groups[group])
+            print group, groups[group][account], account
+}

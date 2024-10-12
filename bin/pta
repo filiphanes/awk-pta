@@ -1,0 +1,53 @@
+#!/bin/sh
+# Main dispatcher for pta commands
+
+# The first argument is the command (e.g., balance, register, ...)
+cmd=$1
+shift
+
+usage() {
+    echo "Usage: cat file.txt | pta <command>"
+    echo "Available commands:"
+    echo "  balance   Prints aggregated balances for account"
+    echo "  register  Prints postings"
+    echo "  txns      Convert sorted postings to transactions"
+    echo "  help      Display this help message"
+}
+
+# Check if no command is given
+if [ -z "$cmd" ]; then
+    usage
+    exit 1
+fi
+
+# if no stdin is piped then use default file
+# [[ -t 0 ]] && export PTA_FILE=main.txt
+
+case "$cmd" in
+    bal | balance)
+        exec ./postings | ./balance
+        ;;
+    reg | register | postings)
+        exec ./postings | ./postings
+        ;;
+    runbal)
+        exec ./postings | ./runbal
+        ;;
+    stats)
+        exec ./postings | ./stats
+        ;;
+    txns)
+        exec ./txns
+        ;;
+    tags)
+        exec ./postings | ./tags
+        ;;
+    help)
+        usage
+        ;;
+    *)
+        echo "pta: '$cmd' is not a pta command."
+        usage
+        exit 1
+        ;;
+esac

@@ -1,0 +1,27 @@
+#!/usr/bin/awk -f
+# prints tags with use counts
+
+BEGINFILE {
+    delete commontags;
+}
+
+/^[0-9]/ {
+    for (tag in commontags)
+        tags[tag]++;
+    for (i=1; i<NR; i++)
+        tags[$(i)]++;
+}
+
+/^=/ {
+    delete commontags;
+    sub(/^= */, "", $0);
+    for (i=1; i<NR; i++)
+        commontags[$(i)]++;
+    delete commontags[""];
+}
+
+END {
+    delete tags[""];
+    for (tag in tags)
+        print tags[tag], tag;
+}

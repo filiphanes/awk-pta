@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+# Find best matching posts
+# ./find "tag1 tag2 tag3" *.txt
+import sys
+
+findtags = set(sys.argv[1].split())
+scores = []
+
+for filename in sys.argv[2:]:
+    with open(filename) as file:
+        for n, line in enumerate(file):
+            linetags = line.split()
+            score = len(findtags.intersection(linetags))
+            if score > 0:
+                scores.append([filename, n, score])
+
+scores.sort(key=lambda x:x[2], reverse=True)
+for filename, n, score in scores:
+    print(f"{filename}:{n} {score}")
+

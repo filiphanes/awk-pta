@@ -1,0 +1,41 @@
+#!/usr/bin/env awk -f
+# Converts from ledger format to pta transaction format
+
+BEGIN {
+    FS="[ \t]+"
+    OFS="\t"
+    balance = 0
+}
+
+# transaction lines: Account Value
+/^[ \t]+[A-Za-z]/ {
+    # empty account amount currency comment
+    # ->
+    # date amount currency account rest 
+
+    # Realization date
+    if (match($0, /\[=[0-9]{4}-[0-9]{2}-[0-9]{2}\]/))
+        date = substr($0, RSTART+2, 10)
+    else
+        date = commondate
+
+    if ($3) {
+        balance -= +$3
+        curr = $4
+        amount = $3
+    } else
+        amount = balance
+    if (curr == ";") curr = ""
+
+    print date, amount, curr, $2, commontags
+    next
+}
+
+# trasaction header: Date Description
+/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
+    commondate = $1
+    $1 = ""
+    commontags = $0
+    balance = 0
+    next
+}

@@ -1,0 +1,10 @@
+#!/usr/bin/awk -f
+# Calculates balances for months
+{
+    groups[substr($1, 1, 7)] += +$2;
+}
+
+END {
+    for (group in groups)
+        print group, groups[group]
+}

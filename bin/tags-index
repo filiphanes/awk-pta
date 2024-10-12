@@ -1,0 +1,5 @@
+#!/bin/bash
+# Prints tags file tag<tab>filename<tab>linenumber
+# in standard sorted vim tags format
+
+./tags-unsorted | sort

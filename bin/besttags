@@ -1,0 +1,10 @@
+#!/bin/bash
+# Find best matching posts
+#TODO
+
+pattern="$(printf "|%s" "$@")"
+pattern=${pattern:1}
+
+output=$(mktemp)
+./tags *.txt | sort -n | grep -E "$pattern" #> "$output"
+

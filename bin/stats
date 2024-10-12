@@ -1,0 +1,44 @@
+#!/usr/bin/env gawk -f
+# Calculates some statistics about postings
+# Usage:
+# postings | ./pta-stats
+
+BEGIN {
+    first_date = "0000-00-00";
+    last_date  = "9999-99-99";
+    postcount = 0;
+    filecount = 0;
+    balance = 0;
+}
+BEGINFILE {
+    filecount++;
+}
+
+/^[0-9]/ {
+    if (first_date < $1) first_date = $1;
+    if (last_date > $1) last_date = $1;
+    postcount++;
+    balance += +$2;
+    
+    $0 = "";
+    $1 = "";
+    $2 = "";
+    sub(/^ +/, "", $0);
+    for (i=1; i<NR; i++)
+        tags[$(i)] = 1;
+}
+
+/^=/ {
+    sub(/^= */, "", $0);
+    for (i=1; i<NR; i++)
+        tags[$(i)] = 1;
+}
+
+END {
+    print "        First date:", first_date;
+    print "         Last date:", last_date;
+    print "Number of postings:", postcount;
+    print "   Number of files:", filecount;
+    print "    Number of tags:", length(tags);
+    print "           Balance:", balance
+}

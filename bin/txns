@@ -1,0 +1,38 @@
+#!/usr/bin/env awk -f
+# Converts sorted postings to transactions similar to ledger
+# using pta format with =
+# On stdin expects postings sorted by date, payee, price asc
+# so that postings are grouped together
+# transaction is created every time running balance is near zero <0.0001
+
+{
+    balance += +$2
+    if (date) {
+        if (date == $1) {
+            date = $1
+            $1 = ""
+        }
+        if (common == $4)
+            $4 = ""
+    } else {
+        date = $1
+        $1 = ""
+        common = $4
+        $4 = ""
+    }
+    gsub(/^ *| *$/, "")
+    gsub(/[ \t]+/, " ")
+    lines[i++] = $0
+    if (-0.0001 < balance && balance < 0.0001) {
+        # print transactions
+        printf "= %s %s\n", date, common
+        for (j in lines) {
+            print lines[j]
+        }
+        printf "\n"
+        # reset array
+        i = 0
+        delete lines
+        date = ""
+    }
+}

@@ -1,0 +1,16 @@
+#!/bin/bash
+# Find best matching posts to the given args
+#TODO
+
+output=$(mktemp)
+args=$@
+echo $args
+./tags *.txt | grep $pattern > output
+
+while output size is small but not empty
+do
+    grep $1 output > output
+    shift
+endwhile
+
+cat output

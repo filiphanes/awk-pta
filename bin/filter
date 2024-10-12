@@ -1,0 +1,8 @@
+#!/bin/bash
+# Filters only postings containing tags from args
+
+./postings *.txt | sort | awk "
+/( |^)$1( |$)/ {
+    gsub(/( +|^)$1( +|$)/, \" \")
+    print
+}"

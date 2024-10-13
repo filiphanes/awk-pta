@@ -1,4 +1,4 @@
-#!/usr/bin/env awk -f
+#!/usr/bin/env gawk -f
 # Converts sorted postings to transactions similar to ledger
 # using pta format with =
 # On stdin expects postings sorted by date, payee, price asc

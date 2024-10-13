@@ -1,44 +1,32 @@
-#!/usr/bin/awk -f
+#!/usr/bin/env gawk -f
 # Calculates balances of accounts from preprocessed postings
 # Usage:
-# postings | rg "$pattern" | ./balance
+# postings | rg "$pattern" | balance
 
 BEGIN {
     OFS = "\t";
-    # Build patter from args
-    #for (i=1; i<=NF; i++) print $(i), id;
 }
 
 {
-    if (match($4, ACCOUNT_REGEX) > 0)
-        balances[$4][$3] += +$2;
+    balances[$3] += +$2
     next
 }
 
 END {
-    # Calculate Total
-    for (tag in balances)
-        for (curr in balances[tag])
-            total[curr] += balances[tag][curr];
-
     # Propagate amounts to parents
-    for (tag in balances) {
-        subtag = tag;
-        sub(":.*$", "", subtag);
-        if (subtag == tag) break;
-        for (curr in balances[tag])
-            balances[subtag][curr] += balances[tag][curr];
+    for (account in balances) {
+        parent = account
+        sub(":.*$", "", parent)
+        if (parent == account) break
+        balances[parent] += +balances[account]
+        total += balances[account]
     }
 
     # print account balances sorted
     PROCINFO["sorted_in"] = "@ind_str_asc";
-    for (tag in balances) {
-        for (curr in balances[tag]) {
-            printf("%12.2f %s %s\n", balances[tag][curr], curr, tag);
-        }
+    for (account in balances) {
+        printf("%12.2f %s\n", balances[account], account)
     }
-    # Print Total
-    for (curr in total) {
-        printf("%12.2f %s Total\n", total[curr], curr);
-    }
+    # Print total
+    printf("%12.2f total\n", total);
 }

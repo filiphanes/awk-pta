@@ -1,7 +1,7 @@
 #!/usr/bin/env gawk -f
 # Calculates some statistics about postings
 # Usage:
-# postings | ./pta-stats
+# postings | stats
 
 BEGIN {
     first_date = "0000-00-00";

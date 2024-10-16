@@ -34,7 +34,7 @@ Quotes from one of the authors of AWK: https://a-z.readthedocs.io/en/latest/awk.
 - Account names without space
 - All posting lines needs to have amount
 - ISO date format YYYY-MM-DD but regex can be changed
-- line starting with equal sign = means that following postings will inherit same tags
+- line starting with date without following numeric amount means following postings will inherit same date
 - empty line ends transaction
 - postings can optionally have spaces for indentation
 - higher level syntax for transactions, budgeting, auto-transaction needs to be converted to postings lines
@@ -42,10 +42,15 @@ Quotes from one of the authors of AWK: https://a-z.readthedocs.io/en/latest/awk.
    1. amount is more important than account
    2. pretty indenting doesn't need so much spaces
    3. to allow grouping postings by account without duplicating account on each line and still have valid syntax
+- default ACCOUNT_REGEX is `(expenses|assets|liabilities|income):[^ ]+`
+- account aliases can be used after amount or date. In 1st field can be alias only if it matches ACCOUNT_REGEX
+- account on line has priority over account from transaction
 
 ```
-=2024-12-31 tesco
-   5 EUR expenses:food bread
+alias food expenses:food
+
+2024-12-31 tesco
+   5 EUR food bread
    5 EUR expenses:food milk
  -10 EUR assets:cash
 ```
@@ -67,15 +72,15 @@ Practically this may not be the most convenient way of entering transactions.
 One reason is that transactions are hard to match. Although they can be matched by adding transaction id as tag to both postings.
 Second is that user need to open, append and save two files for each transaction.
 
-= Assets:Checking
+Assets:Checking
 2024-01-01 10 employer
 2024-01-02 -1 water
 2024-01-03 -2 food
 
-= Income:Employer
+Income:Employer
 2024-01-01 -10 employer
 
-= Expenses:Groceries
+Expenses:Groceries
 2024-01-02 1 water
 2024-01-03 2 food
 

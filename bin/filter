@@ -1,8 +1,18 @@
 #!/bin/bash
 # Filters only postings containing tags from args
+# Usage: postings | sort | filter 'account ~ /^expenses:/'
 
-./postings *.txt | sort | awk "
-/( |^)$1( |$)/ {
-    gsub(/( +|^)$1( +|$)/, \" \")
+gawk "
+BEGIN {
+    \"date +%Y-%m-%d\" | getline today
+}
+{
+    date = \$1
+    amount = \$2
+    account = \$3
+    payee = \$4
+}
+
+$1 {
     print
 }"

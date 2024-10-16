@@ -1,0 +1,18 @@
+#/bin/bash
+# Creates transaction from user answers
+# Uses fzf for fuzzy selecting accounts
+
+DATE=$(date +%Y-%m-%d)
+printf "Date [$DATE]: " > /dev/stderr
+read d
+[[ -z $d ]] || DATE=$d
+printf "Desc: " > /dev/stderr
+read DESC
+printf "Amount: " > /dev/stderr
+read AMOUNT
+A1=$(./main.sh | bin/postings | bin/accounts | fzf --prompt Account1:)
+A2=$(./main.sh | bin/postings | bin/accounts | fzf --prompt Account2:)
+echo
+echo $DATE $DESC
+echo "  " $AMOUNT $A1
+echo " " $((0 - AMOUNT)) $A2

@@ -1,0 +1,13 @@
+#!/usr/bin/env gawk -f
+# Prints existing accounts
+# Usage: postings | accounts
+
+{
+    accounts[$3]++
+}
+
+END {
+    for (account in accounts) {
+        print account
+    }
+}

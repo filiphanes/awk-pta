@@ -15,14 +15,14 @@
 
 BEGIN {
     ACCOUNT_REGEX = ENVIRON["PTA_ACCOUNT_REGEX"]
-    if (!ACCOUNT_REGEX) ACCOUNT_REGEX = "(expenses|assets|liabilities|income):[^ ]+"
+    if (!ACCOUNT_REGEX) ACCOUNT_REGEX = "^([A-Z]+:)?(expenses|assets|liabilities|income|equity)(:[^ ])?"
     AMOUNT_REGEX = "^[-+]?[0-9]+(\\.[0-9]+)?$"
     date = "0000-01-01"
     aliases[""] = ""
 }
 
 # amount is first
-/^ *[-+]?[0-9]+(\.[0-9]+)? / {
+/^ *[-+]?[0-9]+(\.[0-9]+)?([[:space:]]|$)/ {
     # last date is always set to postings without it
     if ($2 ~ ACCOUNT_REGEX) $2 = $2 tags
     else if ($2 in aliases) $2 = aliases[$2] tags
@@ -42,12 +42,6 @@ BEGIN {
         else if (account)       $2 = $2 " " account tags
         else                    $2 = $2 tags
         print
-    #} else if ($2 ~ ACCOUNT_REGEX) {
-    #    # this line has shared account and tags for following postings
-    #    account = $2
-    #    $1 = $2 = ""
-    #    tags = $0
-    #    gsub(/^[[:space:]]|[[:space:]]*$/, "", tags)  # remove first leading space and all traling
     } else {
         # rest is [account] tags
         if ($2 in aliases) $2 = aliases[$2]
@@ -79,5 +73,3 @@ $1 ~ ACCOUNT_REGEX {
     aliases[$2] = $3
     next
 }
-
-# Lines starting with # are not recognized and thus ignored as comments

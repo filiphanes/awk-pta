@@ -3,17 +3,20 @@ Plaintext accounting with plaintext scripts without installing additional softwa
 
 ## Features
 
-- Balance report
-- Register report
-- Print report
-- Filtering transactions
-- Group by month report
-- Filtering accounts
+- balance report
+- register report
+- print report
+- filtering transactions
+- group by month report
+- filtering postings
+- accounts list
 - awk's `-M` option calculates with arbitrary precision arithmetic 
 - 2-3x faster that ledger with single currency (4x faster using mawk).
+- commodities as account prefix (EUR:assets:cash)
 - TODO:
   - validating input file
   - equity report
+  - commodity pricing
 
 # Ideas
 
@@ -42,25 +45,34 @@ Quotes from one of the authors of AWK: https://a-z.readthedocs.io/en/latest/awk.
    1. amount is more important than account
    2. pretty indenting doesn't need so much spaces
    3. to allow grouping postings by account without duplicating account on each line and still have valid syntax
-- default ACCOUNT_REGEX is `(expenses|assets|liabilities|income):[^ ]+`
+- default ACCOUNT_REGEX is `^([A-Z]+:)?(expenses|assets|liabilities|income|equity)(:[^ ])?`
 - account aliases can be used after amount or date. In 1st field can be alias only if it matches ACCOUNT_REGEX
 - account on line has priority over account from transaction
+- string COM@price will create 2 auto-postings
 
 ```
 alias food expenses:food
 
-2024-12-31 tesco
-   5 EUR food bread
-   5 EUR expenses:food milk
- -10 EUR assets:cash
+2024-12-01 tesco
+   5 food bread
+   5 expenses:food milk
+ -10 assets:cash
+
+ 2024-12-02 bitcoin
+       1 BTC:assets EUR@62000
+  -62000 EUR:assets:cash
 ```
 
 will generate these postings lines:
 
 ```
-2024-12-31   5 EUR expenses:food bread tesco
-2024-12-31   5 EUR expenses:food milk tesco
-2024-12-31 -10 EUR assets:cash tesco
+2024-12-31 5 expenses:food bread tesco
+2024-12-31 5 expenses:food milk tesco
+2024-12-31 10 assets:cash tesco
+2024-12-02 1 BTC:assets bitcoin EUR@62000
+2024-12-02 -1 BTC:equity bitcoin autotxn
+2024-12-02 62000 EUR:assets:BTC bitcoin autotxn
+2024-12-02 -62000 EUR:assets:cash bitcoin
 ```
 
 In this way date of each posting in transaction can be customized.
@@ -72,17 +84,23 @@ Practically this may not be the most convenient way of entering transactions.
 One reason is that transactions are hard to match. Although they can be matched by adding transaction id as tag to both postings.
 Second is that user need to open, append and save two files for each transaction.
 
+```
 Assets:Checking
 2024-01-01 10 employer
 2024-01-02 -1 water
 2024-01-03 -2 food
+```
 
+```
 Income:Employer
 2024-01-01 -10 employer
+```
 
+```
 Expenses:Groceries
 2024-01-02 1 water
 2024-01-03 2 food
+```
 
 ## Postings syntax
 - can be processed using other tools grep, sort, filter

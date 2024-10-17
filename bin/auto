@@ -1,0 +1,23 @@
+#!/usr/bin/env gawk -f
+# Creates new automated transactions
+# Usage: postings | auto | balance
+
+# first print each line, then match and create new
+{ print }
+
+match($0, /[[:space:]]([A-Z]*)@([0-9]+\.?[0-9]*)/, m) {
+    commodity_base = m[1]
+    price = m[2]
+    $0 = substr($0, 1, RSTART) "autotxn" substr($0, RSTART+RLENGTH)
+    amount = $2
+    $2 = amount * price
+    match($3, /^([A-Z]+):(.*)$/, m)  # parse account
+    commodity = m[1]
+    account = m[2]
+    if (commodity_base) $3 = commodity_base ":" account ":" commodity
+    else                $3 = account ":" commodity
+    print # 1. txn
+    $2 = -amount
+    $3 = commodity ":equity" 
+    print # 2. txn
+}

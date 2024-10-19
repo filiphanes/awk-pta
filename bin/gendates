@@ -1,0 +1,12 @@
+#!/bin/bash
+since=$1
+until=$2
+interval=$3
+[[ -z $since ]] && echo "missing since" && exit 0
+[[ -z $until ]] && echo "missing until" && exit 0
+[[ -z $interval ]] && echo "missing interval" && exit 0
+
+while [[ $since < $until ]]; do
+    echo $since
+    since=$(date -I -v+$interval -jf "%Y-%m-%d" $since)
+done

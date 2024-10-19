@@ -17,24 +17,24 @@ BEGIN {
     ACCOUNT_REGEX = ENVIRON["PTA_ACCOUNT_REGEX"]
     if (!ACCOUNT_REGEX) ACCOUNT_REGEX = "^([A-Z]+:)?(expenses|assets|liabilities|income|equity)(:[^ ])?"
     AMOUNT_REGEX = "^[-+]?[0-9]+(\\.[0-9]+)?$"
-    date = "0000-01-01"
+    dates[1] = "0000-01-01"
     aliases[""] = ""
 }
 
 # amount is first
-/^ *[-+]?[0-9]+(\.[0-9]+)?([[:space:]]|$)/ {
+/^[[:space:]]*[-+]?[0-9]+(\.[0-9]+)?([[:space:]]|$)/ {
     # last date is always set to postings without it
     if ($2 ~ ACCOUNT_REGEX) $2 = $2 tags
     else if ($2 in aliases) $2 = aliases[$2] tags
     else if (account)       $1 = $1 " " account tags
     else                    $1 = $1 tags
-    print date " " $0
+    for (i in dates) print dates[i], $0
     next
 }
 
 # date is first
-/[0-9]{4}-[0-9]{2}(-[0-9]{2})? / {
-    date = $1
+/^[0-9]{4}-[0-9]{2}(-[0-9]{2})?[[:space:]]/ {
+    dates[1] = $1
     if ($2 ~ AMOUNT_REGEX) {
         # print posting only when numeric value is at second field
         if ($3 ~ ACCOUNT_REGEX) $3 = $3 tags
@@ -53,14 +53,16 @@ BEGIN {
 }
 
 # Empty line resets shared tags, date is kept
-/^ *$/ {
+/^[[:space:]]*$/ {
     account = ""
     tags = ""
+    split(dates[1], dates)  # keep only first date
     next
 }
 
-# account on line sets shared for following postings
+# When account is at 1st field it is default for following postings without account
 $1 ~ ACCOUNT_REGEX {
+    print "account", $1
     account = $1
     if (account in aliases) account = aliases[account]
     $1 = ""
@@ -72,4 +74,65 @@ $1 ~ ACCOUNT_REGEX {
 /^alias[[:space:]]/ {
     aliases[$2] = $3
     next
+}
+
+# Periodic transaction
+/^~[[:space:]]/ {
+    since = dates[1]
+    for (i=2; i <= NF; i++) {
+        if ($i == "every") {
+            i++
+            if ($1 ~ /^[0-9]+$/) {
+                interval = $i
+                i++
+            } else interval = 1
+                 if ($i ~ /^days?/)     interval += "d"
+            else if ($i ~ /^weeks?/)    interval += "w"
+            else if ($i ~ /^months?/)   interval += "m"
+            else if ($i ~ /^quarters?/) interval = (interval*3) "m"
+            else if ($i ~ /^years?/)    interval += "y"
+        }
+        else if ($i == "daily")     interval = "1d"
+        else if ($i == "weekly")    interval = "1w"
+        else if ($i == "monthly")   interval = "1m"
+        else if ($i == "biweekly")  interval = "2w"
+        else if ($i == "bimonthly") interval = "2m"
+        else if ($i == "quarterly") interval = "3m"
+        else if ($i == "yearly")    interval = "1y"
+        else if ($i == "since" || $i == "from") since = $(++i)
+        else if ($i == "until" || $i == "to")   until = $(++i)
+        else if ($i == "in") {
+            i++
+            #TODO
+        }
+    }
+    # until defaults to 1 year after since
+    if (!until) {
+        split(since, a, "-")
+        a[1]++
+        until = sprintf("%04d-%02d-%02d", a[1], a[2], a[3])
+    }
+    cmd = "bin/gendates " since " " until " " interval
+    for (j=1; (cmd | getline d) > 0; j++)
+        dates[j] = d
+    close(cmd)
+}
+
+# Timelog
+$1 == "i" {
+    datetime = $2 " " $3
+    gsub(/[-:]/, " ", datetime)
+    time_in = mktime(datetime)
+    if (time_in < 0) print "invalid datetime", $2, $3 > /dev/stderr
+    time_account = $4
+    $1=$2=$3=$4=""
+    time_tags = $0
+    sub(/^[[:space:]]+/, "", time_tags)
+}
+$1 == "o" {
+    datetime = $2 " " $3
+    gsub(/[-:]/, " ", datetime)
+    time_out = mktime(datetime)
+    if (time_out < 0) print "invalid datetime", $2, $3 > /dev/stderr
+    print $2, (time_out-time_in)/3600, "H:" time_account, time_tags
 }

@@ -10,6 +10,8 @@ Plaintext accounting with plaintext scripts without installing additional softwa
 - group by month report
 - filtering postings
 - accounts list
+- timelog
+- periodic transactions
 - awk's `-M` option calculates with arbitrary precision arithmetic 
 - 2-3x faster that ledger with single currency (4x faster using mawk).
 - commodities as account prefix (EUR:assets:cash)
@@ -20,7 +22,7 @@ Plaintext accounting with plaintext scripts without installing additional softwa
 
 # Ideas
 
-- Simple dependencies: gawk, sort, sh.
+- Simple dependencies: gnu awk, gnu date, sort.
 - Simple development or customization: no compilation.
 - Small readable scripts.
 - Filtering language using awk syntax

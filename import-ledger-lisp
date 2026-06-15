@@ -23,25 +23,6 @@
 #   ("path" LINE (HI LO 0) nil "Payee"           ← encoded-time date
 #     (LINE "Account" "$ amount" t "note"))       ← posting
 
-# Emacs encoded-time (HIGH LOW USEC) → ISO date YYYY-MM-DD
-# The tuple encodes seconds since Unix epoch as HIGH*2^16 + LOW.
-# +12h before dividing rounds to nearest midnight, absorbing timezone offsets.
-function epoch_to_date(hi, lo,    ts, days, yr, leap, yd, mo, dim) {
-    ts = hi * 65536 + lo + 43200
-    days = int(ts / 86400)
-    yr = 1970
-    while (1) {
-        leap = (yr % 4 == 0 && yr % 100 != 0) || (yr % 400 == 0)
-        yd = leap ? 366 : 365
-        if (days >= yd) { days -= yd; yr++ } else break
-    }
-    split("31 28 31 30 31 30 31 31 30 31 30 31", dim, " ")
-    if (leap) dim[2] = 29
-    mo = 1
-    while (days >= dim[mo]) { days -= dim[mo]; mo++ }
-    return sprintf("%04d-%02d-%02d", yr, mo, days + 1)
-}
-
 # Flush accumulated transaction to stdout
 function flush_tx(    i, has_eff, d, tag) {
     if (pc == 0) return
@@ -77,7 +58,8 @@ function flush_tx(    i, has_eff, d, tag) {
 
     # Extract encoded-time date tuple
     match($0, /\(([0-9]+) ([0-9]+) [0-9]+\)/, m)
-    txdate = epoch_to_date(m[1], m[2])
+    # Emacs encoded-time (HIGH LOW USEC) → ISO date YYYY-MM-DD
+    txdate strftime("%Y-%m-%d", m[1] * 65536 + m[1] + 43200, 1)
 
     # Split on double-quotes to extract quoted strings:
     #   q[2] = filepath, q[4] = code-or-payee, q[6] = payee (if code present)

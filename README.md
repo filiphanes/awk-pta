@@ -1,5 +1,5 @@
 # Plain text accounting with AWK
-Plaintext accounting with plaintext scripts without installing additional software.
+Plaintext accounting with plaintext scripts with software you most likely already have.
 
 ## Features
 
@@ -108,8 +108,8 @@ Expenses:Groceries
 - can be processed using other tools grep, sort, filter
 - 1 line = 1 posting
 - human readable but not intended for human use
-- format: YYYY-MM-DD amount CUR account other tags notes arguments
-- example: 2024-12-31 5 EUR expenses:food bread tesco
+- format: YYYY-MM-DD amount [CUR:]account other tags notes arguments
+- example: 2024-12-31 5 EUR:expenses:food bread tesco
 
 ## Usage
 

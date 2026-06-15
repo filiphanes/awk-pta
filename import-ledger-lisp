@@ -1,0 +1,123 @@
+#!/usr/bin/awk -f
+# Converts ledger-cli lisp output to pta format.
+#
+# Usage:  ledger lisp -f input.ledger | gawk -f import-ledger-lisp
+#
+# Delegates ALL parsing to ledger itself. The lisp output is structured
+# S-expressions with quoted strings, so there is zero ambiguity:
+#   - Account names with spaces: handled (quoted strings)
+#   - "$ 37.50" symbol spacing:  handled (amount is a clean field)
+#   - Status flags (* !):        handled (separate t/nil field)
+#   - Elided amounts:            handled (ledger computes them)
+#   - Effective dates [=date]:   emitted as flat postings (pta has no [=date])
+#   - Tags (:nobudget:):         preserved as trailing tags
+#
+# Output strategy (hybrid):
+#   - Transactions where ALL postings share the transaction date:
+#     emitted as pta transaction format (compact, readable)
+#   - Transactions where ANY posting has an effective date:
+#     emitted as flat postings (one line per posting, each with its own date)
+#     This is pta's fundamental format and correctly handles per-posting dates.
+#
+# Lisp input (one transaction per block):
+#   ("path" LINE (HI LO 0) nil "Payee"           ← encoded-time date
+#     (LINE "Account" "$ amount" t "note"))       ← posting
+
+# Emacs encoded-time (HIGH LOW USEC) → ISO date YYYY-MM-DD
+# The tuple encodes seconds since Unix epoch as HIGH*2^16 + LOW.
+# +12h before dividing rounds to nearest midnight, absorbing timezone offsets.
+function epoch_to_date(hi, lo,    ts, days, yr, leap, yd, mo, dim) {
+    ts = hi * 65536 + lo + 43200
+    days = int(ts / 86400)
+    yr = 1970
+    while (1) {
+        leap = (yr % 4 == 0 && yr % 100 != 0) || (yr % 400 == 0)
+        yd = leap ? 366 : 365
+        if (days >= yd) { days -= yd; yr++ } else break
+    }
+    split("31 28 31 30 31 30 31 31 30 31 30 31", dim, " ")
+    if (leap) dim[2] = 29
+    mo = 1
+    while (days >= dim[mo]) { days -= dim[mo]; mo++ }
+    return sprintf("%04d-%02d-%02d", yr, mo, days + 1)
+}
+
+# Flush accumulated transaction to stdout
+function flush_tx(    i, has_eff, d, tag) {
+    if (pc == 0) return
+
+    # Check whether any posting has an effective date
+    has_eff = 0
+    for (i = 1; i <= pc; i++)
+        if (p_eff[i] != "") { has_eff = 1; break }
+
+    if (has_eff) {
+        # Emit flat postings — each gets its own date (pta fundamental format)
+        for (i = 1; i <= pc; i++) {
+            d = (p_eff[i] != "") ? p_eff[i] : txdate
+            tag = (p_tag[i] != "") ? p_tag[i] : ""
+            printf "%s %s %s %s%s\n", d, p_amt[i], p_acct[i], txpayee, tag
+        }
+    } else {
+        # Emit transaction format (compact, all postings share header date)
+        printf "%s %s\n", txdate, txpayee
+        for (i = 1; i <= pc; i++)
+            printf " %s %s%s\n", p_amt[i], p_acct[i], p_tag[i]
+    }
+    print ""
+    pc = 0
+}
+
+# First line of lisp output starts with (( instead of  ( — normalize
+/^\(\(/ { sub(/^\(\(/, " (") }
+
+# Transaction header: ("filepath" LINE (HI LO 0) [code] "payee"
+/^ \("/ {
+    flush_tx()
+
+    # Extract encoded-time date tuple
+    match($0, /\(([0-9]+) ([0-9]+) [0-9]+\)/, m)
+    txdate = epoch_to_date(m[1], m[2])
+
+    # Split on double-quotes to extract quoted strings:
+    #   q[2] = filepath, q[4] = code-or-payee, q[6] = payee (if code present)
+    n = split($0, q, "\"")
+    txpayee = (n >= 7) ? q[6] : q[4]
+
+    pc = 0
+    next
+}
+
+# Posting: (LINE "Account" "$ amount" STATUS ["note"])
+/^  +\(/ {
+    n = split($0, q, "\"")
+    # q[2] = account, q[4] = amount, q[6] = note (only if n >= 7)
+
+    acct = tolower(q[2])
+    gsub(/[ \t]+/, "_", acct)       # spaces in account → underscores
+
+    amt = q[4]
+    gsub(/,/, "", amt)              # thousands separators
+    gsub(/[^0-9.+-]/, "", amt)      # currency symbols ($, €), spaces
+
+    # Parse note for effective dates and tags
+    eff = ""
+    tag = ""
+    if (n >= 7) {
+        raw = q[6]
+        # Effective date: [=2011/01/01] → 2011-01-01
+        if (match(raw, /\[=([0-9]+)\/([0-9]+)\/([0-9]+)\]/, ed))
+            eff = ed[1] "-" ed[2] "-" ed[3]
+        # Tags: :nobudget:
+        if (match(raw, /:[^ :]+:/))
+            tag = " " substr(raw, RSTART, RLENGTH)
+    }
+
+    p_amt[++pc] = amt
+    p_acct[pc]  = acct
+    p_eff[pc]   = eff
+    p_tag[pc]   = tag
+    next
+}
+
+END { flush_tx() }

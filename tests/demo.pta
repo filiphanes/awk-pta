@@ -1,0 +1,74 @@
+# pta syntax demo - converted from tests/demo.ledger
+#
+# pta vs ledger differences demonstrated here:
+#   - amount comes BEFORE account   (ledger: account before amount)
+#   - account names are lowercase   (pta default account regex)
+#   - dates use ISO dashes          (ledger allows slashes)
+#   - every posting has an amount   (ledger allows one elided/auto-balanced)
+#   - payee on the header line is inherited as a tag by every posting
+#   - a posting with its own date is a flat line: DATE amount account tags
+#   - status flags (* !) and $ symbol are dropped (single-currency mode)
+#
+# Run:  cat tests/demo.pta | ./postings | ./balance
+
+2010-12-01 Checking balance *
+ 1000 assets:checking
+-1000 equity:opening_balances
+
+# deferred grocery recognition: each posting carries its own effective date
+# (flat format), while the checking withdrawal stays on the transaction date
+2010-12-20 Organic Co-op
+-225 assets:checking
+2011-01-01 37.50 expenses:food:groceries
+2011-02-01 37.50 expenses:food:groceries
+2011-03-01 37.50 expenses:food:groceries
+2011-04-01 37.50 expenses:food:groceries
+2011-05-01 37.50 expenses:food:groceries
+2011-06-01 37.50 expenses:food:groceries
+
+2010-12-28 Acme Mortgage
+ 200 liabilities:mortgage:principal
+ 500 expenses:interest:mortgage
+ 300 expenses:escrow
+-1000 assets:checking *
+
+2011-01-02 Grocery Store
+ 65 expenses:food:groceries
+-65 assets:checking
+
+2011-01-05 Employer
+ 2000 assets:checking
+-2000 income:salary
+
+# payee plus a note -> both become tags on the postings
+2011-01-14 Bank Regular monthly savings transfer
+ 300 assets:savings
+-300 assets:checking :nobudget:
+
+2011-01-19 Grocery Store
+ 44 expenses:food:groceries hastag:notblock
+-44 assets:checking
+
+2011-01-25 Bank Transfer to cover car purchase
+ 5500 assets:checking
+-5500 assets:savings
+
+2011-01-25 Tom's Used Cars
+ 5500 expenses:auto
+-5500 assets:checking :nobudget:
+
+2011-01-27 Book Store
+ 20 expenses:books
+-20 liabilities:mastercard
+
+2011-04-25 Tom's Used Cars
+ 5500 expenses:auto
+-5500 assets:checking :nobudget:
+
+2011-04-27 Bookstore
+ 20 expenses:books
+-20 assets:checking
+
+2011-12-01 Sale
+ 30 assets:checking
+-30 income:sales

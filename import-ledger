@@ -1,42 +1,103 @@
 #!/usr/bin/env awk -f
-# Converts from ledger format to pta transaction format
+# Converts from ledger-cli format to pta transaction format.
+#
+# ledger-cli input (account before amount):
+#   2024-12-01 Tesco
+#       Expenses:Food:Groceries       5 EUR
+#       Assets:Cash                  -5
+#
+# pta output (amount before account):
+#   2024-12-01 Tesco
+#    5 EUR:Expenses:Food:Groceries
+#   -5 Assets:Cash
+#
+# Supported ledger features:
+#   - ISO (2024-12-01) and slash (2024/12/01) dates, normalized to ISO
+#   - effective/auxiliary dates (2024-12-01=2024-12-15); primary date is used
+#   - transaction codes (2024-12-01 (123) Payee); code is dropped
+#   - commodity after amount (5 EUR) -> EUR:account prefix (pta style)
+#   - symbol-attached amounts ($5, 5.00 EUR); symbol stripped, number kept
+#   - inline comments (; ...) stripped from posting lines
+#   - elided last posting (auto-balanced to zero)
+#   - ledger directives and full-line comments ignored
+#   - account names lowercased to match pta convention (ledger accounts are
+#     case-insensitive); uppercase commodity prefix (EUR, USD) is preserved
 
 BEGIN {
-    FS="[ \t]+"
-    OFS=" "
+    FS = "[ \t]+"
+    OFS = " "
     balance = 0
 }
 
-# transaction lines: Account Value
-/^[ \t]+[A-Za-z]/ {
-    # empty account amount currency comment
-    # ->
-    # date amount currency:account rest 
+# Posting line: indented, not a comment. May start with a status flag (* / !)
+/^[ \t]+[^ \t;]/ {
+    line = $0
+    # strip inline comment (";")
+    if (match(line, /;/))
+        line = substr(line, 1, RSTART - 1)
+    sub(/^[ \t]+/, "", line)            # strip leading indentation
+    sub(/^[*!][ \t]*/, "", line)        # strip status flag (* / !)
+    sub(/[ \t]+$/, "", line)            # strip trailing whitespace
+    if (line == "") next
 
-    if ($3) {
-        balance -= +$3
-        curr = $4
-        amount = $3
-        if (curr == ";") curr = ""
-        if (curr) curr = curr ":"
-        print "", amount, curr $2
-    } else {
-        print realdate, balance, curr $2
-        balance = 0
+    # ledger separates account from amount by 2+ spaces or a tab;
+    # account names may contain single spaces (e.g. "Opening Balances")
+    acct = line
+    amtstr = ""
+    if (match(line, /  +|\t/)) {
+        acct = substr(line, 1, RSTART - 1)
+        amtstr = substr(line, RSTART + RLENGTH)
+        sub(/^[ \t]+/, "", amtstr)
     }
+
+    # lowercase account; pta accounts cannot contain spaces -> underscore
+    acct = tolower(acct)
+    gsub(/[ \t]+/, "_", acct)
+
+    # parse amount: extract letter-code commodity (EUR, USD), keep numeric part
+    curr = ""
+    amount = ""
+    if (amtstr != "") {
+        if (match(amtstr, /[A-Za-z][A-Za-z0-9_]*/)) {
+            curr = substr(amtstr, RSTART, RLENGTH)
+            amtstr = substr(amtstr, 1, RSTART - 1) substr(amtstr, RSTART + RLENGTH)
+        }
+        gsub(/[^0-9.+-]/, "", amtstr)   # strip $, spaces, thousands commas
+        amount = amtstr
+    }
+    if (amount == "") {
+        # elided posting: auto-balance to zero
+        amount = balance
+        curr = ""
+        balance = 0
+    } else {
+        balance -= +amount
+    }
+
+    if (curr != "")
+        print " " amount, curr ":" acct
+    else
+        print " " amount, acct
     next
 }
 
-# trasaction header: Date Description
-/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
-    split($1, dates, "=")
-    date = dates[1]
-    realdate = dates[2]
-    $1 = date
-    print ""
-    print date, tags
-    $1 = ""
-    tags = $0
+# Transaction header: DATE [=EFFDATE] [(code)] payee
+/^[0-9]{4}[-\/][0-9]{2}[-\/][0-9]{2}/ {
+    date = $1
+    gsub(/\//, "-", date)            # normalize slash dates to ISO
+    sub(/=.*$/, "", date)            # drop effective date (pta has no = dates)
+
+    $1 = ""                          # drop date field, keep payee + tags
+    payee = $0
+    sub(/^[ \t]+/, "", payee)
+    sub(/^\([^)]*\)[ \t]*/, "", payee)   # strip transaction code (123)
+    sub(/^[*!][ \t]+/, "", payee)        # strip cleared (*) / pending (!) flag
+
+    print ""                         # blank line ends previous transaction
+    print date, payee
     balance = 0
     next
 }
+
+# Everything else (blank lines, directives, comments): ignore
+{ next }

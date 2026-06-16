@@ -1,0 +1,72 @@
+#!/usr/bin/env gawk -f
+# Validate: checks that every transaction balances to zero.
+# Reads raw pta input (transaction format) — not preprocessed postings.
+#
+# Usage: pta check
+#    or: cat *.txt | check
+#
+# Reports:
+#   ERROR: line 42: 'Tesco' does not balance (off by 5.00)
+#   ...
+#   OK: 12 transaction(s) checked
+
+BEGIN { errors = 0; checked = 0 }
+
+# Date-prefixed line: either a transaction header or a flat posting
+/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
+    if ($2 ~ /^[-+]?[0-9]/) {
+        # Flat posting: DATE amount account tags
+        balance += +$2
+        postings++
+    } else {
+        # Transaction header: DATE payee [status flag]
+        _check_tx()
+        start = FNR
+        payee = $0
+        sub(/^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]+/, "", payee)
+        sub(/[[:space:]]+[!*][[:space:]]*$/, "", payee)  # strip status flag
+        balance = 0
+        postings = 0
+        checked++
+    }
+    next
+}
+
+# Posting line: optional whitespace then number/sign
+/^[[:space:]]*[-+]?[0-9]/ {
+    line = $0
+    sub(/^[[:space:]]+/, "", line)
+    split(line, f, /[ \t]+/)
+    balance += +f[1]
+    postings++
+    next
+}
+
+# Empty line: end of transaction
+/^[[:space:]]*$/ {
+    _check_tx()
+    next
+}
+
+# Everything else (comments, aliases, directives): ignore
+{ next }
+
+# Helper: check current transaction and report if unbalanced
+function _check_tx() {
+    if (postings > 0 && (balance < -0.005 || balance > 0.005)) {
+        printf "ERROR: line %d: '%s' does not balance (off by %.2f)\n", \
+               start, payee, balance > "/dev/stderr"
+        errors++
+    }
+    balance = 0
+    postings = 0
+}
+
+END {
+    _check_tx()   # catch last transaction (no trailing blank line)
+    if (errors == 0)
+        printf "OK: %d transaction(s) checked\n", checked
+    else
+        printf "%d error(s) in %d transaction(s)\n", errors, checked > "/dev/stderr"
+    exit(errors > 0 ? 1 : 0)
+}

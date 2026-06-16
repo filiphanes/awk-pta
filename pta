@@ -1,53 +1,159 @@
 #!/bin/sh
-# Main dispatcher for pta commands
+# pta - plain text accounting dispatcher
+#
+# Usage:
+#   pta <command> [patterns...] [options...]
+#   cat file | pta <command>
+#
+# When no input is piped, reads *.txt from the script directory automatically.
 
-# The first argument is the command (e.g., balance, register, ...)
-cmd=$1
-shift
+DIR="$(cd "$(dirname "$0")" && pwd)"
+export PTA_DIR="$DIR"
 
 usage() {
-    echo "Usage: cat file.txt | pta <command>"
-    echo "Available commands:"
-    echo "  balance   Prints aggregated balances for account"
-    echo "  register  Prints postings"
-    echo "  txns      Convert sorted postings to transactions"
-    echo "  help      Display this help message"
+    cat <<'EOF'
+Usage: pta <command> [patterns...] [options]
+       cat file | pta <command>
+
+Commands:
+  balance (bal)     Aggregated account balances
+  register (reg)    Postings with running balance
+  accounts          List all accounts
+  by-month          Monthly totals
+  by-month-account  Monthly totals per account
+  tags              Tag usage counts
+  stats             Summary statistics
+  check             Validate transactions balance to zero
+  print             Reprint raw transactions
+  sort              Sort postings chronologically
+  txns              Reconstruct transactions from postings
+  runbal            Running balance (minimal format)
+  add               Interactive transaction entry
+
+Options:
+  --from DATE       Start date (inclusive)
+  --to DATE         End date (inclusive)
+  --period YM       Month filter (e.g. 2024-03)
+  --year YYYY       Year filter
+  --depth N         Collapse accounts to depth N
+  --actual          Exclude periodic/planned transactions
+  --planned         Only periodic/planned transactions
+  -f FILE           Input file (default: auto-detect *.txt)
+
+Examples:
+  pta balance                        All-time balance
+  pta balance expenses --year 2024   Expenses for 2024
+  pta reg --period 2024-03           March register
+  pta balance --actual               Real transactions only
+  pta balance --planned              Forecast only
+  pta check                          Validate all transactions
+  pta accounts                       List all accounts
+EOF
 }
 
-# Check if no command is given
-if [ -z "$cmd" ]; then
-    usage
-    exit 1
+# --- Parse arguments ---
+cmd=""
+PTA_FROM="" PTA_TO="" PTA_PERIOD="" PTA_YEAR="" PTA_DEPTH=""
+tag_filter=""
+files=""
+patterns=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --from|--after)  PTA_FROM="$2";  shift 2 ;;
+        --to|--before)   PTA_TO="$2";    shift 2 ;;
+        --period)        PTA_PERIOD="$2"; shift 2 ;;
+        --year)          PTA_YEAR="$2";  shift 2 ;;
+        --depth)         PTA_DEPTH="$2"; shift 2 ;;
+        --actual)        tag_filter="actual"; shift ;;
+        --planned)       tag_filter="planned"; shift ;;
+        -f|--file)       files="$files $2"; shift 2 ;;
+        -h|--help)       usage; exit 0 ;;
+        bal|balance|reg|register|runbal|accounts|by-month|\
+        by-month-account|tags|stats|check|print|sort|sort-txns|txns|add|help)
+            cmd="$1"; shift ;;
+        -*) echo "pta: unknown option '$1'" >&2; exit 1 ;;
+        *) patterns="${patterns:+$patterns }$1"; shift ;;
+    esac
+done
+
+[ -z "$cmd" ] && { usage; exit 1; }
+[ "$cmd" = "help" ] && { usage; exit 0; }
+
+export PTA_FROM PTA_TO PTA_PERIOD PTA_YEAR PTA_DEPTH
+
+# --- Build account filter regex (space-separated patterns → alternation) ---
+acct_regex=""
+if [ -n "$patterns" ]; then
+    acct_regex=$(printf '%s' "$patterns" | tr ' ' '|')
 fi
 
-# if no stdin is piped then use default file
-# [[ -t 0 ]] && export PTA_FILE=main.txt
+# --- Auto-load data files when stdin is a terminal ---
+if [ -t 0 ]; then
+    if [ -z "$files" ]; then
+        files=$(ls *.txt 2>/dev/null | grep -v test || true)
+        [ -z "$files" ] && { echo "pta: no input (pipe data or create *.txt files)" >&2; exit 1; }
+    fi
+fi
 
+# --- Commands that read raw input (no postings preprocessing) ---
 case "$cmd" in
-    bal | balance)
-        exec ./postings | ./balance
+    check)
+        if [ -n "$files" ]; then cat $files; else cat; fi | "$DIR/check"
+        exit $?
         ;;
-    reg | register | postings)
-        exec ./postings | ./postings
+    print)
+        if [ -n "$files" ]; then cat $files; else cat; fi
+        exit 0
         ;;
-    runbal)
-        exec ./postings | ./runbal
+    sort-txns)
+        if [ -n "$files" ]; then cat $files; else cat; fi | "$DIR/sort-txns"
+        exit $?
         ;;
-    stats)
-        exec ./postings | ./stats
-        ;;
-    txns)
-        exec ./txns
-        ;;
-    tags)
-        exec ./postings | ./tags
-        ;;
-    help)
-        usage
-        ;;
-    *)
-        echo "pta: '$cmd' is not a pta command."
-        usage
-        exit 1
+    add)
+        "$DIR/add"
+        exit $?
         ;;
 esac
+
+# --- Commands that go through the postings pipeline ---
+# Pipeline: input → postings → date-filter → acct-filter → tag-filter → command
+{
+    if [ -n "$files" ]; then cat $files; else cat; fi
+} | "$DIR/postings" | {
+    # Date filter stage
+    if [ -n "$PTA_FROM" ] || [ -n "$PTA_TO" ] || [ -n "$PTA_PERIOD" ] || [ -n "$PTA_YEAR" ]; then
+        "$DIR/date-filter"
+    else
+        cat
+    fi
+} | {
+    # Account filter stage
+    if [ -n "$acct_regex" ]; then
+        awk -v p="$acct_regex" '$3 ~ p'
+    else
+        cat
+    fi
+} | {
+    # Tag filter stage (planned vs actual)
+    case "$tag_filter" in
+        actual)  grep -v planned ;;
+        planned) grep planned ;;
+        *) cat ;;
+    esac
+} | {
+    # Command stage
+    case "$cmd" in
+        bal|balance)        "$DIR/balance" ;;
+        reg|register)       "$DIR/register" ;;
+        runbal)             "$DIR/runbal" ;;
+        accounts)           "$DIR/accounts" ;;
+        by-month)           "$DIR/by-month" ;;
+        by-month-account)   "$DIR/by-month-account" ;;
+        tags)               "$DIR/tags" ;;
+        stats)              "$DIR/stats" ;;
+        sort)               "$DIR/sort" ;;
+        txns)               "$DIR/sort" | "$DIR/txns" ;;
+        *) echo "pta: unknown command '$cmd'" >&2; exit 1 ;;
+    esac
+}

@@ -1,0 +1,30 @@
+#!/usr/bin/env awk -f
+# Filter postings by date range.
+# Reads date bounds from environment variables (set by the pta dispatcher):
+#   PTA_FROM   inclusive start date (ISO: 2024-01-01)
+#   PTA_TO     inclusive end date   (ISO: 2024-12-31)
+#   PTA_PERIOD month filter         (YYYY-MM, e.g. 2024-03)
+#   PTA_YEAR   year filter          (YYYY, e.g. 2024)
+#
+# ISO dates sort lexicographically, so string comparison is sufficient.
+#
+# Usage: postings | date-filter | balance
+
+BEGIN {
+    from   = ENVIRON["PTA_FROM"]
+    to     = ENVIRON["PTA_TO"]
+    period = ENVIRON["PTA_PERIOD"]
+    year   = ENVIRON["PTA_YEAR"]
+}
+
+# Non-posting lines: pass through
+!/^[0-9]{4}-[0-9]{2}-[0-9]{2}/ { print; next }
+
+# Apply active filters
+{
+    if (from   != "" && $1 < from)                     next
+    if (to     != "" && $1 > to)                       next
+    if (period != "" && substr($1, 1, 7) != period)    next
+    if (year   != "" && substr($1, 1, 4) != year)      next
+    print
+}

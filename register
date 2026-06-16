@@ -1,0 +1,30 @@
+#!/usr/bin/env gawk -f
+# Register: displays postings with a running balance.
+# Usage: postings | register
+#
+# Output format:
+#   2024-01-15  expenses:food        50.00          50.00  Tesco
+#   2024-01-15  assets:checking     -50.00           0.00  Tesco
+#
+# Blank line separates transactions (when running balance returns to ~0).
+
+BEGIN { running = 0 }
+
+{
+    date    = $1
+    amount  = +$2
+    account = $3
+
+    # Collect tags (payee, notes, etc.)
+    desc = ""
+    for (i = 4; i <= NF; i++)
+        desc = desc (desc ? " " : "") $i
+
+    running += amount
+
+    printf "%s  %-35s %10.2f  %12.2f  %s\n", date, account, amount, running, desc
+
+    # Blank line at transaction boundary (balance returns to ~0)
+    if (-0.005 < running && running < 0.005 && NR > 1)
+        printf "\n"
+}

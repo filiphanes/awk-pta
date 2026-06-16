@@ -4,8 +4,8 @@
 # postings | stats
 
 BEGIN {
-    first_date = "0000-00-00";
-    last_date  = "9999-99-99";
+    first_date = "9999-99-99";
+    last_date  = "0000-00-00";
     postcount = 0;
     filecount = 0;
     balance = 0;
@@ -15,8 +15,8 @@ BEGINFILE {
 }
 
 /^[0-9]/ {
-    if (first_date < $1) first_date = $1;
-    if (last_date > $1) last_date = $1;
+    if ($1 < first_date) first_date = $1;
+    if ($1 > last_date) last_date = $1;
     postcount++;
     balance += +$2;
     

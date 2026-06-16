@@ -1,32 +1,47 @@
 #!/usr/bin/env gawk -f
-# Calculates balances of accounts from preprocessed postings
+# Calculates balances of accounts from preprocessed postings.
 # Usage:
-# postings | rg "$pattern" | balance
+#   postings | rg "$pattern" | balance
+#
+# Environment:
+#   PTA_DEPTH   collapse accounts to this depth (e.g. 2 turns
+#               expenses:food:groc → expenses:food)
 
-BEGIN {
-    OFS = "\t";
-}
+BEGIN { OFS = "\t" }
 
-{
-    balances[$3] += +$2
-    next
-}
+# Hot path: just sum into full account name
+{ balances[$3] += +$2 }
 
 END {
-    # Propagate amounts to parents
-    for (account in balances) {
-        parent = account
-        sub(":.*$", "", parent)
-        if (parent == account) break
-        balances[parent] += +balances[account]
-        total += balances[account]
+    depth = ENVIRON["PTA_DEPTH"]
+
+    # Collapse to requested depth (done once, not per-posting)
+    if (depth != "") {
+        for (acct in balances) {
+            n = split(acct, p, ":")
+            if (n > depth) {
+                collapsed = p[1]
+                for (i = 2; i <= depth; i++)
+                    collapsed = collapsed ":" p[i]
+                balances[collapsed] += balances[acct]
+                delete balances[acct]
+            }
+        }
     }
 
-    # print account balances sorted
-    PROCINFO["sorted_in"] = "@ind_str_asc";
+    # Propagate amounts to parent accounts
+    for (account in balances) {
+        parent = account
+        while (sub(/:[^:]*$/, "", parent))
+            balances[parent] += balances[account]
+    }
+
+    # Print sorted; total = sum of top-level accounts only
+    PROCINFO["sorted_in"] = "@ind_str_asc"
     for (account in balances) {
         printf("%12.2f %s\n", balances[account], account)
+        if (account !~ /:/)
+            total += balances[account]
     }
-    # Print total
-    printf("%12.2f total\n", total);
+    printf("%12.2f total\n", total)
 }

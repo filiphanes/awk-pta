@@ -13,6 +13,19 @@
 # With following fixed fields order:
 # date amount currency account other tags
 
+# Advance date by n units (d=day, w=week, m=month, y=year).
+# Uses mktime for normalization (handles month overflow, leap years, etc.)
+function next_date(date, unit, n,    a, y, mo, d, ts) {
+    split(date, a, "-")
+    y = a[1] + 0; mo = a[2] + 0; d = a[3] + 0
+    if (unit == "m") return strftime("%Y-%m-%d", mktime(y " " (mo+n) " " d " 0 0 0"))
+    if (unit == "y") return strftime("%Y-%m-%d", mktime((y+n) " " mo " " d " 0 0 0"))
+    ts = mktime(y " " mo " " d " 0 0 0")
+    if (unit == "w") ts += n * 7 * 86400
+    else             ts += n * 86400
+    return strftime("%Y-%m-%d", ts)
+}
+
 BEGIN {
     ACCOUNT_REGEX = ENVIRON["PTA_ACCOUNT_REGEX"]
     if (!ACCOUNT_REGEX) ACCOUNT_REGEX = "^([A-Z]+:)?(expenses|assets|liabilities|income|equity)(:[^ ])?"
@@ -76,46 +89,49 @@ $1 ~ ACCOUNT_REGEX {
     next
 }
 
-# Periodic transaction
+# Periodic transaction — generate recurring dates
+# Syntax: ~ (daily|weekly|monthly|biweekly|quarterly|yearly|every N UNITS) [from DATE] [to DATE]
 /^~[[:space:]]/ {
     since = dates[1]
+    interval_n = 1
+    interval_unit = "m"
+    until = ""
     for (i=2; i <= NF; i++) {
         if ($i == "every") {
             i++
-            if ($1 ~ /^[0-9]+$/) {
-                interval = $i
-                i++
-            } else interval = 1
-                 if ($i ~ /^days?/)     interval += "d"
-            else if ($i ~ /^weeks?/)    interval += "w"
-            else if ($i ~ /^months?/)   interval += "m"
-            else if ($i ~ /^quarters?/) interval = (interval*3) "m"
-            else if ($i ~ /^years?/)    interval += "y"
+            if ($i ~ /^[0-9]+$/) { interval_n = $i + 0; i++ }
+            if ($i ~ /^days?/)         interval_unit = "d"
+            else if ($i ~ /^weeks?/)    interval_unit = "w"
+            else if ($i ~ /^months?/)   interval_unit = "m"
+            else if ($i ~ /^quarters?/) { interval_unit = "m"; interval_n *= 3 }
+            else if ($i ~ /^years?/)    interval_unit = "y"
         }
-        else if ($i == "daily")     interval = "1d"
-        else if ($i == "weekly")    interval = "1w"
-        else if ($i == "monthly")   interval = "1m"
-        else if ($i == "biweekly")  interval = "2w"
-        else if ($i == "bimonthly") interval = "2m"
-        else if ($i == "quarterly") interval = "3m"
-        else if ($i == "yearly")    interval = "1y"
-        else if ($i == "since" || $i == "from") since = $(++i)
-        else if ($i == "until" || $i == "to")   until = $(++i)
-        else if ($i == "in") {
-            i++
-            #TODO
-        }
+        else if ($i == "daily")      interval_unit = "d"
+        else if ($i == "weekly")     interval_unit = "w"
+        else if ($i == "monthly")    interval_unit = "m"
+        else if ($i == "biweekly")  { interval_unit = "w"; interval_n = 2 }
+        else if ($i == "bimonthly") { interval_unit = "m"; interval_n = 2 }
+        else if ($i == "quarterly") { interval_unit = "m"; interval_n = 3 }
+        else if ($i == "yearly")     interval_unit = "y"
+        else if ($i == "since" || $i == "from") { i++; since = $i }
+        else if ($i == "until" || $i == "to")   { i++; until = $i }
     }
     # until defaults to 1 year after since
     if (!until) {
         split(since, a, "-")
-        a[1]++
-        until = sprintf("%04d-%02d-%02d", a[1], a[2], a[3])
+        until = sprintf("%04d-%02d-%02d", a[1] + 1, a[2], a[3])
     }
-    cmd = "bin/gendates " since " " until " " interval
-    for (j=1; (cmd | getline d) > 0; j++)
-        dates[j] = d
-    close(cmd)
+    # Generate dates inline
+    delete dates
+    d = since; j = 1
+    while (d < until) {
+        dates[j++] = d
+        d = next_date(d, interval_unit, interval_n)
+    }
+    if (j == 1) dates[1] = since  # no dates generated, fallback
+    # Tag generated postings so user can filter planned vs actual
+    tags = tags " planned"
+    next
 }
 
 # Timelog

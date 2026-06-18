@@ -1,0 +1,20 @@
+# Invoice demo data for `pta invoice`.
+#
+# Tags travel on the transaction's date line, so every posting below inherits
+# `inv:<N>` and `klient:<id>`. Line items are the receivables (AR) postings
+# with a positive amount; a free-text token after the account becomes the
+# line description. Payments are AR postings with a negative amount.
+
+2024-03-01 inv:2024-001 klient:acme
+   600 assets:receivable:acme Konzultačné služby
+   200 assets:receivable:acme Cestovné
+   200 assets:receivable:acme Materiál
+ -1000 income:services:acme
+
+2024-03-15 inv:2024-001 klient:acme
+  1000 assets:bank
+ -1000 assets:receivable:acme Úhrada
+
+2024-04-01 inv:2024-002 klient:globex
+   800 assets:receivable:globex Vývoj softvéru
+  -800 income:services:globex

@@ -1,0 +1,7 @@
+#!pta-tool: convert-csv --date 1 --amount 2 --payee 3 --account expenses:general --skip-header --negate
+date,amount,description
+2024-02-01,50,Lunch Meeting
+2024-02-03,15,Taxi
+2024-02-10,200,Office Supplies
+2024-02-14,35,Team Coffee
+2024-02-20,120,Software License

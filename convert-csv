@@ -1,0 +1,80 @@
+#!/bin/sh
+# pta-tools/convert-csv — convert CSV to pta transactions
+#
+# One of the shipped pta-tools. Reads CSV on stdin, emits pta-format
+# transactions (one posting per row). Referenced from a data file's shebang:
+#
+#   #!pta-tool: convert-csv --date 1 --amount 2 --payee 3 --account assets:checking --skip-header
+#   date,amount,description
+#   2024-01-01,5000,Salary
+#   2024-01-02,-49.99,Groceries
+#
+# Then:
+#   pta your-file.csv                  → see converted transactions
+#   pta balance -f your-file.csv       → run through the full pipeline
+#
+# Or standalone:
+#   cat bank.csv | pta-tools/convert-csv --date 1 --amount 2 --skip-header
+#
+# Options:
+#   --date N         CSV column for date (required)
+#   --amount N       CSV column for amount (required)
+#   --payee N        CSV column for payee/description
+#   --account STR    pta account for all rows (default: assets:import)
+#   --delimiter C    field separator (default: ,)
+#   --skip-header    skip first data row (after shebang)
+#   --negate         flip all amount signs
+#
+# Limitations:
+#   - No quoted-field parsing (CSV fields containing commas will misparse).
+#     Pre-process with `mlr --csv` or write your own pta-tool.
+#   - Amounts use . as decimal separator. Strip thousands separators first.
+
+date_col=0  amt_col=0  payee_col=0
+account="assets:import"
+delim=","
+skip=0  negate=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --date)        date_col=$2; shift 2 ;;
+        --amount)      amt_col=$2; shift 2 ;;
+        --payee)       payee_col=$2; shift 2 ;;
+        --account)     account=$2; shift 2 ;;
+        --delimiter)   delim=$2; shift 2 ;;
+        --skip-header) skip=1; shift ;;
+        --negate)      negate=1; shift ;;
+        *) shift ;;
+    esac
+done
+
+if [ "$date_col" -eq 0 ] || [ "$amt_col" -eq 0 ]; then
+    echo "convert-csv: --date N and --amount N are required" >&2
+    exit 1
+fi
+
+gawk -v date_col="$date_col" -v amt_col="$amt_col" -v payee_col="$payee_col" \
+     -v account="$account" -v delim="$delim" -v skip="$skip" -v negate="$negate" '
+BEGIN { FS = delim }
+# Shebang line — always skip
+FNR == 1 && /^#!/ { next }
+# Optional CSV header skip (first non-shebang line)
+skip && !hdr_done { hdr_done = 1; next }
+{
+    d = $(date_col)
+    a = $(amt_col)
+    gsub(/["\r$]/, "", d)
+    gsub(/["\r$[:space:]]/, "", a)
+    if (negate) {
+        if (substr(a, 1, 1) == "-") a = substr(a, 2)
+        else a = "-" a
+    }
+    p = ""
+    if (payee_col > 0) {
+        p = $(payee_col)
+        gsub(/["\r]/, "", p)
+        sub(/[[:space:]]+$/, "", p)
+    }
+    if (d ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}/)
+        printf "%s %s\n %s %s\n\n", d, p, a, account
+}'

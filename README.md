@@ -12,6 +12,7 @@ Plaintext accounting with plaintext scripts with software you most likely alread
 - accounts list
 - timelog
 - periodic transactions
+- invoice report (HTML)
 - awk's `-M` option calculates with arbitrary precision arithmetic 
 - 2-3x faster that ledger with single currency (4x faster using mawk).
 - commodities as account prefix (EUR:assets:cash)
@@ -114,3 +115,33 @@ Expenses:Groceries
 ## Usage
 
     ./pta 
+
+## Invoices
+
+Tag every posting of an invoice with `inv:N` and a client (`klient:id`, or the
+account segment after the receivables account). Line items are receivables
+postings with a positive amount; payments are receivables postings with a
+negative amount.
+
+```
+2024-03-01 inv:2024-001 klient:acme
+   600 assets:receivable:acme Consulting
+   200 assets:receivable:acme Travel
+ -1000 income:services:acme
+
+2024-03-15 inv:2024-001 klient:acme
+  1000 assets:bank
+ -1000 assets:receivable:acme Payment
+```
+
+Render:
+
+    pta invoice 2024-001                 # HTML to stdout
+    pta invoice 2024-001 | weasyprint - invoice-2024-001.pdf
+
+Client and seller details come from plain-text DBs (copy `customers.example`
+and `company.example` to `customers.txt`/`company.txt` and edit). The HTML template is
+`invoice.template.html` (override with `PTA_INVOICE_TEMPLATE`). Tunables:
+`PTA_AR` (receivables regex), `PTA_CURRENCY`, `PTA_TAX` (VAT %),
+`PTA_DUE_DAYS`. Outstanding invoices are just `pta balance <receivables>`.
+

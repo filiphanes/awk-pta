@@ -1,7 +1,0 @@
-#!/bin/bash
-
-bin/postings 2020.txt
-bin/postings 2021.txt
-bin/postings 2022.txt
-bin/postings 2023.txt
-bin/postings 2024.txt

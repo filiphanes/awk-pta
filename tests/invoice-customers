@@ -1,0 +1,14 @@
+# Test fixture client DB for invoice tests.
+id: acme
+name: ACME Solutions s.r.o.
+address: Hlavná 1
+address: 811 01 Bratislava
+ico: 22222222
+dic: SK2222222222
+iban: SK11 1100 0000 0029 1234 5678
+
+id: globex
+name: Globex a.s.
+address: Park 5
+address: 040 01 Košice
+ico: 33333333

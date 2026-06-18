@@ -1,0 +1,10 @@
+#!pta-tool: convert-csv --date 1 --amount 2 --payee 3 --account assets:checking --skip-header
+date,amount,description
+2024-01-01,5000,Employer Salary
+2024-01-02,-1200.50,Acme Mortgage
+2024-01-05,-85.30,Green Grocery
+2024-01-08,-32.00,Bus Pass
+2024-01-15,250.00,Freelance Project
+2024-01-20,-1400.00,Rent Payment
+2024-01-22,-18.75,Coffee Shop
+2024-01-28,-95.20,Electric Bill

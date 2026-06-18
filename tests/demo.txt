@@ -9,7 +9,7 @@
 #   - a posting with its own date is a flat line: DATE amount account tags
 #   - status flags (* !) and $ symbol are dropped (single-currency mode)
 #
-# Run:  cat tests/demo.pta | ./postings | ./balance
+# Run:  cat tests/demo.txt | ./postings | ./balance
 
 2010-12-01 Checking balance *
  1000 assets:checking

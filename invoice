@@ -1,0 +1,42 @@
+#!/bin/sh
+# invoice - render an invoice (HTML) from postings tagged inv:<NUMBER>.
+#
+# Usage:
+#   cat *.txt | postings | invoice 2024-001        # HTML to stdout
+#   pta invoice 2024-001                            # via the dispatcher
+#
+# Files (all optional; missing DBs render blank fields, missing template
+# falls back to an embedded one):
+#   PTA_CUSTOMERS        clients DB   (default: $PTA_DIR/customers.txt)
+#   PTA_COMPANY          seller DB    (default: $PTA_DIR/company.txt)
+#   PTA_INVOICE_TEMPLATE HTML template (default: $PTA_DIR/invoice.template.html)
+#   Copy customers.example -> customers.txt and company.example -> company.txt, then edit.
+#
+# Tunables: PTA_AR (receivables regex, default "receivable|pohladavky"),
+#           PTA_CURRENCY (default EUR), PTA_TAX (VAT %, default 0),
+#           PTA_DUE_DAYS (default 14).
+#
+# Render to PDF:
+#   pta invoice 2024-001 | weasyprint - invoice-2024-001.pdf
+#   pta invoice 2024-001 > i.html && wkhtmltopdf i.html invoice-2024-001.pdf
+
+DIR="${PTA_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+INV="$1"
+
+[ -z "$INV" ] && {
+    echo "invoice: missing invoice number (usage: invoice 2024-001)" >&2
+    exit 2
+}
+
+CUST="${PTA_CUSTOMERS:-$DIR/customers.txt}"
+COMP="${PTA_COMPANY:-$DIR/company.txt}"
+TPL="${PTA_INVOICE_TEMPLATE:-$DIR/invoice.template.html}"
+[ -f "$CUST" ] || CUST=""
+[ -f "$COMP" ] || COMP=""
+[ -f "$TPL" ]  || TPL=""
+
+exec gawk -v inv="$INV" \
+          -v cust_file="$CUST" \
+          -v comp_file="$COMP" \
+          -v tpl_file="$TPL" \
+          -f "$DIR/invoice.awk" -

@@ -2,4 +2,8 @@
 .DS_Store
 main.ledger
 *.txt
+!tests/demo.txt
+!tests/invoice.txt
 scripts/
+# real invoice party data; holds private IČO/DIČ/IBAN
+# copy from *.example to customers.txt / company.txt

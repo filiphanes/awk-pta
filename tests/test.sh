@@ -6,11 +6,11 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 export PTA_DIR="$DIR"
 unset PTA_ACCOUNT_REGEX
 
-DEMO="$DIR/tests/demo.pta"
+DEMO="$DIR/tests/demo.txt"
 pass=0
 fail=0
 
-# Run pta with demo.pta as piped input
+# Run pta with demo.txt as piped input
 run() { cat "$DEMO" | "$DIR/pta" "$@"; }
 
 # Check that output contains a string
@@ -130,6 +130,75 @@ printf '%s\n' "$PERIODIC" | "$DIR/pta" balance --planned | grep -q "300.00 expen
 
 printf '%s\n' "$PERIODIC" | "$DIR/pta" balance --actual | grep -q "0.00 total" \
     && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: periodic-actual-flag"; }
+
+echo ""
+echo "=== invoice ==="
+INV="$DIR/tests/invoice.txt"
+IC="$DIR/tests/invoice-customers"
+IM="$DIR/tests/invoice-company"
+
+# paid invoice 2024-001 (3 line items summing to 1000, paid 1000)
+inv_html=$(cat "$INV" | PTA_CUSTOMERS="$IC" PTA_COMPANY="$IM" "$DIR/pta" invoice 2024-001 2>&1)
+echo "$inv_html" | grep -q "<title>Faktúra 2024-001</title>" && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-title"; }
+echo "$inv_html" | grep -q "ACME Solutions s.r.o."          && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-client-name"; }
+echo "$inv_html" | grep -q "Konzultač"                       && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-item-label"; }
+echo "$inv_html" | grep -q "Test s.r.o."                     && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-seller-name"; }
+echo "$inv_html" | grep -q "1,000.00\|>1000.00<"             && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-amount"; }
+echo "$inv_html" | grep -qi ">Paid<"                         && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-paid-status"; }
+# exactly 3 item rows (the # index cells are the only bare <td>DIGIT</td>)
+item_rows=$(echo "$inv_html" | grep -cE '<td>[0-9]+</td>')
+[ "$item_rows" = "3" ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-item-count (got $item_rows)"; }
+
+# unpaid invoice 2024-002 (800, no payment)
+inv2=$(cat "$INV" | PTA_CUSTOMERS="$IC" PTA_COMPANY="$IM" "$DIR/pta" invoice 2024-002 2>&1)
+echo "$inv2" | grep -q "Globex a.s."         && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice2-client"; }
+echo "$inv2" | grep -qi ">Unpaid<"           && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice2-status"; }
+echo "$inv2" | grep -q "800.00"              && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice2-amount"; }
+
+# missing invoice -> non-zero exit
+cat "$INV" | PTA_CUSTOMERS="$IC" PTA_COMPANY="$IM" "$DIR/pta" invoice 9999 2>/dev/null
+[ $? -ne 0 ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-missing-exit"; }
+
+# no invoice number -> usage error (exit 2)
+echo "" | "$DIR/invoice" >/dev/null 2>&1
+[ $? -eq 2 ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-no-arg-exit"; }
+
+# fallback template works without the HTML file
+inv3=$(cat "$INV" | PTA_CUSTOMERS="$IC" PTA_COMPANY="$IM" PTA_INVOICE_TEMPLATE=/nope "$DIR/pta" invoice 2024-001 2>&1)
+echo "$inv3" | grep -qi "<html"              && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: invoice-fallback-template"; }
+
+echo ""
+echo "=== pta-tools shebang routing ==="
+
+CSV_TEST=$(mktemp /tmp/pta-test-XXXX.csv)
+cat > "$CSV_TEST" <<'CSVEOF'
+#!pta-tool: convert-csv --date 1 --amount 2 --payee 3 --account assets:checking --skip-header
+date,amount,description
+2024-01-01,100,Test Income
+2024-01-02,-30,Test Expense
+CSVEOF
+
+csv_out=$(cat "$CSV_TEST" | "$DIR/pta-tools/convert-csv" --date 1 --amount 2 --payee 3 --account assets:checking --skip-header 2>&1)
+echo "$csv_out" | grep -q "100 assets:checking" && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: convert-csv-output-amount"; }
+echo "$csv_out" | grep -q "Test Income" && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: convert-csv-output-payee"; }
+
+file_out=$("$DIR/pta" "$CSV_TEST" 2>&1)
+echo "$file_out" | grep -q "100 assets:checking" && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: shebang-routing-pta-file"; }
+
+bal_out=$("$DIR/pta" balance -f "$CSV_TEST" 2>&1)
+echo "$bal_out" | grep -q "70.00 total" && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: shebang-balance (got: $(echo "$bal_out" | tail -1))"; }
+
+echo "#!pta-tool: nonexistent" > /tmp/pta-bad-tool.csv
+"$DIR/pta" /tmp/pta-bad-tool.csv >/dev/null 2>&1
+[ $? -ne 0 ] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: unknown-tool-exit"; }
+
+"$DIR/pta" tools 2>&1 | grep -q "convert-csv" && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: tools-listing"; }
+
+printf '#!pta-tool: convert-csv --date 1 --amount 2 --account expenses:t --skip-header --negate\ndate,amount\n2024-01-01,50\n' > /tmp/pta-negate.csv
+neg_out=$("$DIR/pta" /tmp/pta-negate.csv 2>&1)
+echo "$neg_out" | grep -q "\-50 expenses:t" && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL: convert-csv-negate"; }
+
+rm -f "$CSV_TEST" /tmp/pta-bad-tool.csv /tmp/pta-negate.csv
 
 echo ""
 echo "================================"

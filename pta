@@ -10,6 +10,54 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PTA_DIR="$DIR"
 
+# --- pta-tool discovery and shebang routing ---
+# A data file may declare a converter on line 1:
+#   #!pta-tool: convert-csv --date 1 --amount 2
+# pta reads (not executes) the shebang and invokes the named tool.
+# Lookup order: ./pta-tools/ → $PTA_DIR/pta-tools/ → pta-tool-NAME on $PATH.
+find_pta_tool() {
+    [ -x "./pta-tools/$1" ]        && { echo "./pta-tools/$1"; return 0; }
+    [ -x "$PTA_DIR/pta-tools/$1" ] && { echo "$PTA_DIR/pta-tools/$1"; return 0; }
+    command -v "pta-tool-$1" 2>/dev/null && return 0
+    return 1
+}
+
+# Read one file; if line 1 is a pta-tool shebang, route through the tool.
+# Tools read the file body on stdin, emit pta transactions on stdout.
+emit_file() {
+    _f="$1"
+    _first=$(head -1 "$_f" 2>/dev/null | tr -d '\r')
+    case "$_first" in
+        '#!'*pta-tool*)
+            # Extract everything after the first 'pta-tool' token
+            _rest=${_first#*pta-tool}
+            _rest=${_rest#:}
+            # Word-split: first word = tool name, rest = args
+            set -- $_rest
+            _name="$1"; shift
+            _args="$*"
+            [ -z "$_name" ] && { echo "pta: empty tool name in shebang ($_f)" >&2; return 1; }
+            _path=$(find_pta_tool "$_name") || {
+                echo "pta: unknown pta-tool '$_name' (in $_f)" >&2
+                return 1
+            }
+            "$_path" $_args < "$_f"
+            ;;
+        *)
+            cat "$_f"
+            ;;
+    esac
+}
+
+# Emit all input files (or stdin if none), routing shebanged files through tools.
+emit_files() {
+    if [ -n "$files" ]; then
+        for _f in $files; do emit_file "$_f" || return 1; done
+    else
+        cat
+    fi
+}
+
 usage() {
     cat <<'EOF'
 Usage: pta <command> [patterns...] [options]
@@ -28,7 +76,13 @@ Commands:
   sort              Sort postings chronologically
   txns              Reconstruct transactions from postings
   runbal            Running balance (minimal format)
+  invoice (inv)     Render an invoice as HTML (tag postings with inv:N)
   add               Interactive transaction entry
+  tools             List available pta-tools
+
+Data files may declare a converter via shebang:
+  #!pta-tool: convert-csv --date 1 --amount 2
+See examples/ for working demos.
 
 Options:
   --from DATE       Start date (inclusive)
@@ -70,14 +124,27 @@ while [ $# -gt 0 ]; do
         -f|--file)       files="$files $2"; shift 2 ;;
         -h|--help)       usage; exit 0 ;;
         bal|balance|reg|register|runbal|accounts|by-month|\
-        by-month-account|tags|stats|check|print|sort|sort-txns|txns|add|help)
+        by-month-account|tags|stats|check|print|sort|sort-txns|txns|invoice|inv|add|tools|help)
             cmd="$1"; shift ;;
         -*) echo "pta: unknown option '$1'" >&2; exit 1 ;;
-        *) patterns="${patterns:+$patterns }$1"; shift ;;
+        *)
+            # Positional: existing file → input, else account pattern
+            if [ -f "$1" ]; then
+                files="${files:+$files }$1"
+            else
+                patterns="${patterns:+$patterns }$1"
+            fi
+            shift ;;
     esac
 done
 
-[ -z "$cmd" ] && { usage; exit 1; }
+[ -z "$cmd" ] && {
+    if [ -n "$files" ]; then
+        cmd="print"       # pta FILE → show converted/raw transactions
+    else
+        usage; exit 1
+    fi
+}
 [ "$cmd" = "help" ] && { usage; exit 0; }
 
 export PTA_FROM PTA_TO PTA_PERIOD PTA_YEAR PTA_DEPTH
@@ -98,29 +165,51 @@ fi
 
 # --- Commands that read raw input (no postings preprocessing) ---
 case "$cmd" in
+    tools)
+        _found=0
+        _seen=""
+        for _loc in "$PTA_DIR/pta-tools" "./pta-tools"; do
+            [ -d "$_loc" ] || continue
+            _canon=$(cd "$_loc" && pwd)
+            case " $_seen " in *" $_canon "*) continue ;; esac
+            _seen="$_seen $_canon"
+            for _t in "$_loc"/*; do
+                [ -f "$_t" ] && [ -x "$_t" ] && {
+                    printf "  %-16s (%s)\n" "$(basename "$_t")" "$_loc"
+                    _found=1
+                }
+            done
+        done
+        [ "$_found" -eq 0 ] && echo "  (none found — see examples/)"
+        exit 0
+        ;;
     check)
-        if [ -n "$files" ]; then cat $files; else cat; fi | "$DIR/check"
+        emit_files | "$DIR/check"
         exit $?
         ;;
     print)
-        if [ -n "$files" ]; then cat $files; else cat; fi
-        exit 0
+        emit_files
+        exit $?
         ;;
     sort-txns)
-        if [ -n "$files" ]; then cat $files; else cat; fi | "$DIR/sort-txns"
+        emit_files | "$DIR/sort-txns"
         exit $?
         ;;
     add)
         "$DIR/add"
         exit $?
         ;;
+    invoice|inv)
+        # invoice number comes from positionals; go straight through postings
+        # (skip date/account filters - the inv:N tag is the selector)
+        emit_files | "$DIR/postings" | "$DIR/invoice" $patterns
+        exit $?
+        ;;
 esac
 
 # --- Commands that go through the postings pipeline ---
 # Pipeline: input → postings → date-filter → acct-filter → tag-filter → command
-{
-    if [ -n "$files" ]; then cat $files; else cat; fi
-} | "$DIR/postings" | {
+emit_files | "$DIR/postings" | {
     # Date filter stage
     if [ -n "$PTA_FROM" ] || [ -n "$PTA_TO" ] || [ -n "$PTA_PERIOD" ] || [ -n "$PTA_YEAR" ]; then
         "$DIR/date-filter"

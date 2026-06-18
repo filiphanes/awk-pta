@@ -1,0 +1,7 @@
+# Test fixture seller DB for invoice tests.
+name: Test s.r.o.
+address: Testovacia 1
+address: 811 01 Bratislava
+ico: 11111111
+dic: SK1111111111
+iban: SK00 1100 0000 0029 0000 1111

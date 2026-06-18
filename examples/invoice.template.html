@@ -1,0 +1,85 @@
+<!doctype html>
+<!--
+  Invoice template for `pta invoice`. Edit freely.
+  Scalar placeholders replaced by the renderer: invoice_no, date, due_date,
+  currency, status, client_id, client_name, client_address, client_ico,
+  client_dic, client_icdph, client_iban, client_swift, client_email,
+  client_note, seller_name, seller_address, seller_ico, seller_dic,
+  seller_icdph, seller_iban, seller_swift, seller_email, seller_phone,
+  seller_web, subtotal, tax_rate, tax, total, paid, balance_due.
+  Line items repeat the single block wrapped by the ITEM-START and ITEM-END
+  markers; inside it use: item_idx, item_label, item_amount.
+-->
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <title>Faktúra {{invoice_no}}</title>
+  <style>
+    body{font:14px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;
+         color:#1f2937;max-width:780px;margin:2em auto;padding:0 1em}
+    h1{font-size:1.7em;margin:0;letter-spacing:-.01em}
+    .muted{color:#6b7280}
+    table{width:100%;border-collapse:collapse;margin:1.2em 0}
+    th,td{padding:.55em .6em;text-align:left;border-bottom:1px solid #e5e7eb}
+    th{font-weight:600;background:#f9fafb;font-size:.9em;text-transform:uppercase;letter-spacing:.03em}
+    .amt{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .totals{margin-left:auto;width:290px;margin-top:1em}
+    .totals td{border:none;padding:.3em .6em}
+    .totals tr.due td{font-weight:700;font-size:1.15em;border-top:2px solid #1f2937}
+    header{display:flex;justify-content:space-between;gap:2em;flex-wrap:wrap}
+    .party strong{display:block;font-size:1.05em;margin-bottom:.2em}
+    hr{border:none;border-top:1px solid #e5e7eb;margin:1.5em 0}
+    .badge{display:inline-block;padding:.15em .6em;border-radius:99px;
+           background:#eef2ff;color:#4338ca;font-size:.85em;font-weight:600}
+    @media print{body{margin:0}.noprint{display:none}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Faktúra</h1>
+    <div class="muted">číslo: {{invoice_no}}</div>
+    <div>Dátum vystavenia: {{date}}</div>
+    <div>Splatnosť: {{due_date}}</div>
+    <div style="margin-top:.4em"><span class="badge">{{status}}</span></div>
+  </div>
+  <div class="party">
+    <strong>{{seller_name}}</strong>
+    {{seller_address}}<br>
+    IČO: {{seller_ico}}<br>
+    DIČ: {{seller_dic}}<br>
+    IČ DPH: {{seller_icdph}}<br>
+    IBAN: {{seller_iban}}<br>
+    {{seller_email}} {{seller_phone}}
+  </div>
+</header>
+
+<hr>
+
+<div class="party">
+  <strong>Odberateľ: {{client_name}}</strong>
+  {{client_address}}<br>
+  IČO: {{client_ico}} &nbsp; DIČ: {{client_dic}} &nbsp; IČ DPH: {{client_icdph}}<br>
+  {{client_email}}
+</div>
+
+<table>
+  <thead>
+    <tr><th>#</th><th>Popis</th><th class="amt">Suma ({{currency}})</th></tr>
+  </thead>
+  <tbody>
+{{#items}}    <tr><td>{{item_idx}}</td><td>{{item_label}}</td><td class="amt">{{item_amount}}</td></tr>
+{{/items}}  </tbody>
+</table>
+
+<table class="totals">
+  <tr><td>Medzisúčet</td><td class="amt">{{subtotal}}</td></tr>
+  <tr><td>VAT {{tax_rate}} %</td><td class="amt">{{tax}}</td></tr>
+  <tr><td>Celkom</td><td class="amt">{{total}}</td></tr>
+  <tr><td>Uhradené</td><td class="amt">{{paid}}</td></tr>
+  <tr class="due"><td>K úhrade</td><td class="amt">{{balance_due}}</td></tr>
+</table>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 #!/usr/bin/awk -f
 # Converts ledger-cli lisp output to pta format.
 #
-# Usage:  ledger lisp -f input.ledger | gawk -f import-ledger-lisp
+# Usage:  ledger lisp -f input.ledger | gawk -f convert-ledger-lisp
 #
 # Delegates ALL parsing to ledger itself. The lisp output is structured
 # S-expressions with quoted strings, so there is zero ambiguity:

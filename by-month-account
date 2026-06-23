@@ -1,4 +1,4 @@
-#!/usr/bin/awk -f
+#!/usr/bin/env -S gawk -f
 # Calculates balances for months and accounts
 # from preprocessed postings
 

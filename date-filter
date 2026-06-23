@@ -1,4 +1,4 @@
-#!/usr/bin/env awk -f
+#!/usr/bin/env -S gawk -f
 # Filter postings by date range.
 # Reads date bounds from environment variables (set by the pta dispatcher):
 #   PTA_FROM   inclusive start date (ISO: 2024-01-01)

@@ -1,4 +1,4 @@
-#!/usr/bin/awk -f
+#!/usr/bin/env -S gawk -f
 # prints tags with use counts
 
 BEGINFILE {

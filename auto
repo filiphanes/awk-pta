@@ -1,4 +1,4 @@
-#!/usr/bin/env gawk -f
+#!/usr/bin/env -S gawk -f
 # Creates new automated transactions
 # Usage: postings | auto | balance
 

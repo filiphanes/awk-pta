@@ -1,4 +1,4 @@
-#!/usr/bin/awk -f
+#!/usr/bin/env -S gawk -f
 # Converts sorted postings to transactions using pta format
 # On stdin expects postings sorted by date, payee, price asc
 # so that postings are grouped together

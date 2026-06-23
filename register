@@ -1,4 +1,4 @@
-#!/usr/bin/env gawk -f
+#!/usr/bin/env -S gawk -f
 # Register: displays postings with a running balance.
 # Usage: postings | register
 #

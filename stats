@@ -1,4 +1,4 @@
-#!/usr/bin/env gawk -f
+#!/usr/bin/env -S gawk -f
 # Calculates some statistics about postings
 # Usage:
 # postings | stats

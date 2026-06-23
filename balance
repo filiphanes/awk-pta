@@ -1,4 +1,4 @@
-#!/usr/bin/env gawk -f
+#!/usr/bin/env -S gawk -f
 # Calculates balances of accounts from preprocessed postings.
 # Usage:
 #   postings | rg "$pattern" | balance

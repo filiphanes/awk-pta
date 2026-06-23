@@ -1,4 +1,4 @@
-#!/usr/bin/env awk -f
+#!/usr/bin/env -S gawk -f
 # Converts from ledger-cli format to pta transaction format.
 #
 # ledger-cli input (account before amount):

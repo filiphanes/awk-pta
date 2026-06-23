@@ -1,4 +1,4 @@
-#!/usr/bin/env gawk -f
+#!/usr/bin/env -S gawk -f
 # Prints tags file tag<tab>filename<tab>linenumber
 # needs to be sorted before using in im tags
 

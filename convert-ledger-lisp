@@ -1,4 +1,4 @@
-#!/usr/bin/awk -f
+#!/usr/bin/env -S gawk -f
 # Converts ledger-cli lisp output to pta format.
 #
 # Usage:  ledger lisp -f input.ledger | gawk -f convert-ledger-lisp

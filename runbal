@@ -1,4 +1,4 @@
-#!/usr/bin/env awk -f
+#!/usr/bin/env -S gawk -f
 # Calculates running balance for postings from stdin 
 {
     balance += +$2

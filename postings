@@ -1,4 +1,4 @@
-#!/usr/bin/env gawk -f
+#!/usr/bin/env -S gawk -f
 # Preprocessor for:
 # - dates are recognized in ISO format YYYY-MM-DD or YYYY-MM
 # - if posting date is missing, last date is used or 0000-01-01

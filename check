@@ -1,4 +1,4 @@
-#!/usr/bin/env gawk -f
+#!/usr/bin/env -S gawk -f
 # Validate: checks that every transaction balances to zero.
 # Reads raw pta input (transaction format) — not preprocessed postings.
 #

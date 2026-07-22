@@ -30,7 +30,21 @@ INV="$1"
 
 CUST="${PTA_CUSTOMERS:-$DIR/customers.txt}"
 COMP="${PTA_COMPANY:-$DIR/company.txt}"
-TPL="${PTA_INVOICE_TEMPLATE:-$DIR/invoice.template.html}"
+# Template resolution (highest priority first):
+#   1. PTA_INVOICE_TEMPLATE (explicit)
+#   2. ./invoice.template.html    (per-repo override)
+#   3. $DIR/invoice.template.html  (shipped default)
+#   4. $DIR/examples/invoice.template.html (shipped example fallback)
+#   5. embedded template (when none of the above exist)
+if [ -n "$PTA_INVOICE_TEMPLATE" ]; then
+    TPL="$PTA_INVOICE_TEMPLATE"
+elif [ -f ./invoice.template.html ]; then
+    TPL=./invoice.template.html
+elif [ -f "$DIR/invoice.template.html" ]; then
+    TPL="$DIR/invoice.template.html"
+else
+    TPL="$DIR/examples/invoice.template.html"
+fi
 [ -f "$CUST" ] || CUST=""
 [ -f "$COMP" ] || COMP=""
 [ -f "$TPL" ]  || TPL=""

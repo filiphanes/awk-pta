@@ -1,5 +1,6 @@
 .env
 .DS_Store
+.omo/
 main.ledger
 *.txt
 !tests/demo.txt
